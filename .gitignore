@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,34 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# # -------------------------------------------------------------------------
+
+# Python
+*.log
+*.pyc
+__pycache__
+*.sqlite3
+
+# Environments
+
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+
+# # Additional
+
+# This is where the conversations are stored
+projects/ 
+
+
+# Sql database
+checkpoints.sqlite
+checkpoints.sqlite-shm
+checkpoints.sqlite-wal

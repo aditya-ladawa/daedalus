@@ -3,15 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "fastapi-dev": ".venv/bin/python -m uvicorn api.index:app --reload",
+    "next-dev": "next dev",
+    "dev": "concurrently \"pnpm run next-dev\" \"pnpm run fastapi-dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "antd": "^6.1.2",
+    "concurrently": "^9.2.1",
+    "framer-motion": "^12.23.26",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-resizable-panels": "^4.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

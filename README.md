@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DAEDALUS
+
+**Deep Agent for Exploratory Discovery and Analytical Literature Understanding System**
+
+DAEDALUS is a powerful research assistant designed to help you explore, discover, and understand complex literature using advanced AI agents.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- pnpm
+
+### Installation
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/aditya-ladawa/daedalus.git
+   cd daedalus
+   ```
+
+2. **Set up the Python environment:**
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Install Node.js dependencies:**
+
+   ```bash
+   pnpm install
+   ```
+
+   OR
+
+   ```bash
+   npm install
+   ```
+
+### Configuration
+
+Create a `.env` file in the root directory and add your Google Gemini API key:
+
+```env
+GOOGLE_API_KEY=your_gemini_api_key_here
+PROJECTS_DIR=./projects
+CHECKPOINTS_DB=./checkpoints.sqlite
+```
+
+### Running the Application
+
+Start both the FastAPI backend and the Next.js frontend concurrently:
+
+```bash
+pnpm dev
+```
+
+OR
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application will be available at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Project Management**: Create, rename, and delete research projects.
+- **File Management**: Upload and preview research papers (PDFs), images, and data files.
+- **Dynamic Interface**: Modern, responsive UI with real-time chat and file viewing.
