@@ -4,7 +4,7 @@
 
 DAEDALUS is a deep, long-running research agent designed for rigorous, in-depth scientific inquiry. It autonomously conducts large-context literature analysis, identifies research gaps, links and synthesizes evidence across studies, and structures knowledge into coherent graphs and representations. DAEDALUS analyzes PDFs, images, and experimental results, generates visualizations and charts, and produces precise, well-structured reports to support evidence-driven research progress.
 
-_**DAEDALUS**, a master craftsman and engineer in Greek mythology. This name reflects systematic craftsmanship and disciplined ingenuity; an architect of complex structures built from reason, evidence, and methodical design._
+_**DAEDALUS** is named after the mythological master craftsman, known for designing complex systems through intellect and precision. The name reflects our agent’s role in systematically constructing knowledge by assembling evidence, linking structures, and navigating complexity through disciplined reasoning._
 
 ## Getting Started
 
