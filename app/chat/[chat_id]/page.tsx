@@ -1,18 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { FileNavigator } from "../../components/FileNavigator";
 import { FileViewer } from "../../components/FileViewer";
-import { ChatPanel } from "../../components/ChatPanel";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import { CopilotSidebar } from "@copilotkit/react-ui";
 
 interface FileInfo {
   name: string;
@@ -68,9 +63,9 @@ const CollapseButton = ({
 
 export default function ChatPage() {
   const params = useParams();
+  const router = useRouter();
   const chatId = params.chat_id as string;
   
-  const [messages, setMessages] = useState<Message[]>([]);
   const [title, setTitle] = useState("Untitled Project");
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -78,19 +73,15 @@ export default function ChatPage() {
   
   // Panel widths
   const [leftWidth, setLeftWidth] = useState(280);
-  const [rightWidth, setRightWidth] = useState(420);
   
   // Saved widths for restore
   const [savedLeftWidth, setSavedLeftWidth] = useState(280);
-  const [savedRightWidth, setSavedRightWidth] = useState(420);
   
   // Collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
   
   // Resize states
   const [isResizingLeft, setIsResizingLeft] = useState(false);
-  const [isResizingRight, setIsResizingRight] = useState(false);
 
   // Constraints
   const MIN_WIDTH = 240;
@@ -104,10 +95,16 @@ export default function ChatPage() {
 
   const loadConversation = async () => {
     try {
-      const res = await fetch(`/conversations/${chatId}`);
-      const data = await res.json();
-      if (data.messages) setMessages(data.messages);
-      if (data.title) setTitle(data.title);
+      // Load title from metadata endpoint
+      const res = await fetch(`/conversations/${chatId}/metadata`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) setTitle(data.title);
+      } else if (res.status === 404) {
+        // Conversation doesn't exist - redirect to new chat
+        router.replace("/chat");
+        return;
+      }
     } catch (error) {
       console.error("Failed to load conversation:", error);
     } finally {
@@ -122,25 +119,6 @@ export default function ChatPage() {
       setFiles(data.files || []);
     } catch (error) {
       console.error("Failed to load files:", error);
-    }
-  };
-
-  const sendMessage = async (content: string) => {
-    const userMessage: Message = { role: "user", content };
-    setMessages((prev) => [...prev, userMessage]);
-
-    try {
-      const res = await fetch(`/conversations/${chatId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: content }),
-      });
-      const data = await res.json();
-      if (data.response) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
     }
   };
 
@@ -191,17 +169,6 @@ export default function ChatPage() {
     }
   }, [leftCollapsed, leftWidth, savedLeftWidth]);
 
-  const toggleRightPanel = useCallback(() => {
-    if (rightCollapsed) {
-      setRightWidth(savedRightWidth);
-      setRightCollapsed(false);
-    } else {
-      setSavedRightWidth(rightWidth);
-      setRightWidth(COLLAPSED_WIDTH);
-      setRightCollapsed(true);
-    }
-  }, [rightCollapsed, rightWidth, savedRightWidth]);
-
   // Resize handlers
   const handleLeftResize = useCallback((e: MouseEvent) => {
     const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_LEFT_WIDTH, e.clientX));
@@ -209,15 +176,8 @@ export default function ChatPage() {
     if (leftCollapsed) setLeftCollapsed(false);
   }, [leftCollapsed]);
 
-  const handleRightResize = useCallback((e: MouseEvent) => {
-    const newWidth = Math.max(MIN_WIDTH, Math.min(window.innerWidth * 0.45, window.innerWidth - e.clientX));
-    setRightWidth(newWidth);
-    if (rightCollapsed) setRightCollapsed(false);
-  }, [rightCollapsed]);
-
   const handleMouseUp = useCallback(() => {
     setIsResizingLeft(false);
-    setIsResizingRight(false);
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
   }, []);
@@ -225,10 +185,9 @@ export default function ChatPage() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizingLeft) handleLeftResize(e);
-      if (isResizingRight) handleRightResize(e);
     };
 
-    if (isResizingLeft || isResizingRight) {
+    if (isResizingLeft) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "col-resize";
@@ -239,12 +198,12 @@ export default function ChatPage() {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizingLeft, isResizingRight, handleLeftResize, handleRightResize, handleMouseUp]);
+  }, [isResizingLeft, handleLeftResize, handleMouseUp]);
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       {/* Resize Overlay - Prevents iframes from capturing mouse events during resize */}
-      {(isResizingLeft || isResizingRight) && (
+      {isResizingLeft && (
         <div 
           style={{ 
             position: "fixed", 
@@ -411,69 +370,10 @@ export default function ChatPage() {
             <FileViewer chatId={chatId} filename={selectedFile} onClose={() => setSelectedFile(null)} />
           </div>
         </div>
-
-        {/* Right Resize Handle */}
-        <div
-          onMouseDown={(e) => { e.preventDefault(); setIsResizingRight(true); }}
-          className={`resize-handle ${isResizingRight ? 'active' : ''}`}
-        />
-
-        {/* Right Panel - Chat */}
-        <motion.div
-          animate={{ width: rightWidth }}
-          transition={{ type: "spring", stiffness: 400, damping: 35 }}
-          style={{
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            background: "var(--background-elevated)",
-            borderLeft: "1px solid var(--border)"
-          }}
-        >
-          <AnimatePresence mode="wait">
-            {rightCollapsed ? (
-              <motion.div
-                key="collapsed"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "var(--space-4)" }}
-              >
-                <CollapseButton direction="left" onClick={toggleRightPanel} title="Expand chat" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="expanded"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ height: "100%", display: "flex", flexDirection: "column" }}
-              >
-                <div className="panel-header">
-                  <CollapseButton direction="right" onClick={toggleRightPanel} title="Collapse" />
-                  <motion.span 
-                    key={title}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="panel-title"
-                    style={{ textAlign: "center" }}
-                  >
-                    {title}
-                  </motion.span>
-                  <div style={{ width: "32px" }} />
-                </div>
-                <ChatPanel
-                  messages={messages}
-                  onSendMessage={sendMessage}
-                  onUploadFile={uploadFile}
-                  loading={loading}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
       </div>
+
+      {/* CopilotSidebar - Replaces the custom ChatPanel */}
+      <CopilotSidebar />
     </div>
   );
 }

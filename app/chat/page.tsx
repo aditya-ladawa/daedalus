@@ -27,6 +27,7 @@ export default function NewChatPage() {
       const data = await res.json();
       
       if (data.id) {
+        // Redirect to the new conversation
         router.push(`/chat/${data.id}`);
       }
     } catch (error) {

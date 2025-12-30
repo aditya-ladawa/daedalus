@@ -1,95 +1,112 @@
 """
 DAEDALUS FastAPI Backend
 Deep Agent for Exploratory Discovery and Analytical Literature Understanding System
+
+This backend provides:
+1. AG-UI/CopilotKit endpoint for the LangGraph agent at "/"
+2. File management routes for project files
+3. Simple conversation metadata (listing, renaming, deleting)
 """
 
+import warnings
+# Suppress Pydantic warnings from ag_ui_langgraph package
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+
 import os
-import json
 import shutil
+import aiosqlite
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import Optional
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from langchain.chat_models import init_chat_model
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage, SystemMessage
+from langchain_core.tools import InjectedToolCallId, tool
+from langgraph.prebuilt import InjectedState
+
+from copilotkit import LangGraphAGUIAgent
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint
+
+from api.all_schemas import ConversationCreate, ConversationRename, FileRename, DeepAgentState
+
 
 from uuid_extensions import uuid7
-from langchain.chat_models import init_chat_model
-from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from api.all_tools import web_search, read_todos, write_todos, think_strategically
+
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Constants
 PROJECTS_DIR = Path("projects")
-CHECKPOINTS_DB = "checkpoints.sqlite"
 
-
-def extract_text(content) -> str:
-    """Extract text from message content, handling both string and list formats."""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        text_parts = []
-        for part in content:
-            if isinstance(part, str):
-                text_parts.append(part)
-            elif isinstance(part, dict):
-                if part.get("type") == "text":
-                    text_parts.append(part.get("text", ""))
-                elif "text" in part and part.get("type") not in ("thought", "thinking"):
-                    text_parts.append(part["text"])
-            elif hasattr(part, "text"):
-                if getattr(part, "type", "text") in ("text", "content"):
-                    text_parts.append(part.text)
-        return "".join(text_parts)
-    return str(content) if content is not None else ""
-
-
-# Pydantic Models
-class MessageRequest(BaseModel):
-    message: str
-
-
-class ConversationCreate(BaseModel):
-    initial_message: str
-
-
-class ConversationRename(BaseModel):
-    title: str
-
-
-class FileRename(BaseModel):
-    new_name: str
+# Initialize chat model at module level
+chat_model = init_chat_model(
+    model="gemini-3-flash-preview",
+    model_provider="google_genai",
+    temperature=0.1,
+    thinking_level='minimal'
+)
 
 
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize chat model and checkpointer on startup, cleanup on shutdown."""
+    """Initialize checkpointer and agent on startup, cleanup on shutdown."""
+    
     # Ensure projects directory exists
     PROJECTS_DIR.mkdir(exist_ok=True)
     
-    # Initialize chat model
-    app.state.chat_model = init_chat_model(
-        model="gemini-3-flash-preview",
-        model_provider="google_genai",
-        temperature=0.1,
-        thinking_level='minimal'
-    )
+    # Create the database directory if it doesn't exist
+    db_path = os.getenv("SQLITE_DB_PATH", "./data/checkpoints.db")
+    os.makedirs(os.path.dirname(db_path) if os.path.dirname(db_path) else ".", exist_ok=True)
+    
+    # Store db_path for use by routes
+    app.state.db_path = db_path
+    
+    # Create conversations table in the same database
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """)
+        await db.commit()
     
     # Initialize AsyncSqliteSaver and create agent
-    async with AsyncSqliteSaver.from_conn_string(CHECKPOINTS_DB) as saver:
-        await saver.setup()
-        app.state.checkpointer = saver
-        app.state.agent = create_agent(
-            app.state.chat_model,
-            tools=[],
-            checkpointer=saver
+    async with AsyncSqliteSaver.from_conn_string(db_path) as checkpointer:
+        await checkpointer.setup()
+        
+        app.state.checkpointer = checkpointer
+        
+        # Create the ReAct agent with LangGraph
+        graph = create_agent(
+            model=chat_model,
+            tools=[web_search, read_todos, write_todos, think_strategically],
+            checkpointer=checkpointer,
+            state=DeepAgentState
         )
+        
+        # Add the CopilotKit AG-UI endpoint at root
+        add_langgraph_fastapi_endpoint(
+            app=app,
+            agent=LangGraphAGUIAgent(
+                name="gemini_agent",
+                description="An AI assistant powered by Gemini and LangGraph with persistent memory.",
+                graph=graph,
+            ),
+            path="/",
+        )
+        
         yield
 
 
@@ -102,61 +119,42 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-
-@app.get("/healthcheck")
-async def healthcheck():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "DAEDALUS"}
+# Add CORS middleware for frontend communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # =============================================================================
-# Conversation Routes
+# Conversation Metadata Routes (for UI listing/management only)
+# Actual chat is handled by CopilotKit through the AG-UI endpoint
 # =============================================================================
 
 @app.get("/conversations")
 async def list_conversations(request: Request):
     """List all conversations with their titles and timestamps."""
-    conversations = []
+    db_path = request.app.state.db_path
     
-    # Get all thread configs from checkpointer
-    checkpointer = request.app.state.checkpointer
-    
-    # List all project directories to find conversation IDs
-    if PROJECTS_DIR.exists():
-        for project_dir in PROJECTS_DIR.iterdir():
-            if project_dir.is_dir():
-                chat_id = project_dir.name
-                
-                # Use directory creation time for created_at
-                created_at = project_dir.stat().st_ctime
-                
-                # Get last active time from directory modification
-                updated_at = project_dir.stat().st_mtime
-                
-                # Try to get metadata from checkpoint
-                config = {"configurable": {"thread_id": chat_id}}
-                try:
-                    checkpoint_tuple = await checkpointer.aget_tuple(config)
-                    title = "Untitled"
-                    if checkpoint_tuple and checkpoint_tuple.metadata:
-                        title = checkpoint_tuple.metadata.get("title", "Untitled")
-                    
-                    conversations.append({
-                        "id": chat_id,
-                        "title": title,
-                        "created_at": created_at,
-                        "updated_at": updated_at
-                    })
-                except Exception:
-                    conversations.append({
-                        "id": chat_id,
-                        "title": "Untitled",
-                        "created_at": created_at,
-                        "updated_at": updated_at
-                    })
-    
-    # Sort by updated_at descending
-    conversations.sort(key=lambda x: x["updated_at"], reverse=True)
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, title, created_at, updated_at FROM conversations ORDER BY updated_at DESC"
+        )
+        rows = await cursor.fetchall()
+        
+        conversations = [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+            for row in rows
+        ]
     
     return {"conversations": conversations}
 
@@ -164,6 +162,8 @@ async def list_conversations(request: Request):
 @app.post("/conversations")
 async def create_conversation(data: ConversationCreate, request: Request):
     """Create a new conversation with auto-generated title."""
+    db_path = request.app.state.db_path
+    
     # Generate UUIDv7 for conversation ID
     chat_id = str(uuid7())
     
@@ -172,150 +172,60 @@ async def create_conversation(data: ConversationCreate, request: Request):
     project_path.mkdir(parents=True, exist_ok=True)
     
     # Generate title using chat model
-    chat_model = request.app.state.chat_model
     title_prompt = f"Generate a short, concise title (max 6 words) for a conversation that starts with: '{data.initial_message}'. Return ONLY the title, nothing else."
     title_response = await chat_model.ainvoke(title_prompt)
-    title = extract_text(title_response.content).strip().strip('"\'')
     
-    # Invoke agent with initial message and store title in metadata
-    agent = request.app.state.agent
-    config = {
-        "configurable": {"thread_id": chat_id},
-        "metadata": {"title": title}
-    }
+    # Extract text from response
+    content = title_response.content
+    if isinstance(content, str):
+        title = content.strip().strip('"\'')
+    elif isinstance(content, list):
+        # Handle list of content blocks
+        title = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        ).strip().strip('"\'')
+    else:
+        title = str(content).strip().strip('"\'')
     
-    response = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": data.initial_message}]},
-        config
-    )
+    # Limit title length
+    if len(title) > 60:
+        title = title[:57] + "..."
     
-    # Extract assistant response
-    assistant_message = ""
-    if response and "messages" in response:
-        for msg in reversed(response["messages"]):
-            if hasattr(msg, "type") and msg.type == "ai":
-                assistant_message = extract_text(msg.content)
-                break
-            elif isinstance(msg, dict) and msg.get("role") == "assistant":
-                assistant_message = extract_text(msg.get("content", ""))
-                break
-    
-    return {
-        "id": chat_id,
-        "title": title,
-        "response": assistant_message
-    }
-
-
-@app.get("/conversations/{chat_id}")
-async def get_conversation(chat_id: str, request: Request):
-    """Get conversation history."""
-    config = {"configurable": {"thread_id": chat_id}}
-    checkpointer = request.app.state.checkpointer
-    
-    # Get checkpoint
-    checkpoint_tuple = await checkpointer.aget_tuple(config)
-    if not checkpoint_tuple:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Extract messages from checkpoint
-    messages = []
-    if checkpoint_tuple.checkpoint:
-        channel_values = checkpoint_tuple.checkpoint.get("channel_values", {})
-        msgs = channel_values.get("messages", [])
-        for msg in msgs:
-            if hasattr(msg, "type"):
-                messages.append({
-                    "role": "user" if msg.type == "human" else "assistant",
-                    "content": extract_text(msg.content)
-                })
-            elif isinstance(msg, dict):
-                messages.append({
-                    "role": msg.get("role", "unknown"),
-                    "content": extract_text(msg.get("content", ""))
-                })
-    
-    title = checkpoint_tuple.metadata.get("title", "Untitled") if checkpoint_tuple.metadata else "Untitled"
+    # Save to database
+    now = datetime.now().timestamp()
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (chat_id, title, now, now)
+        )
+        await db.commit()
     
     return {
         "id": chat_id,
-        "title": title,
-        "messages": messages
+        "title": title
     }
-
-
-@app.post("/conversations/{chat_id}")
-async def send_message(chat_id: str, data: MessageRequest, request: Request):
-    """Send a message to continue the conversation."""
-    # Check if conversation exists
-    project_path = PROJECTS_DIR / chat_id
-    if not project_path.exists():
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Get existing metadata to preserve title
-    checkpointer = request.app.state.checkpointer
-    config = {"configurable": {"thread_id": chat_id}}
-    checkpoint_tuple = await checkpointer.aget_tuple(config)
-    
-    title = "Untitled"
-    if checkpoint_tuple and checkpoint_tuple.metadata:
-        title = checkpoint_tuple.metadata.get("title", "Untitled")
-    
-    # Invoke agent with new message
-    agent = request.app.state.agent
-    config_with_meta = {
-        "configurable": {"thread_id": chat_id},
-        "metadata": {"title": title}
-    }
-    
-    response = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": data.message}]},
-        config_with_meta
-    )
-    
-    # Extract assistant response
-    assistant_message = ""
-    if response and "messages" in response:
-        for msg in reversed(response["messages"]):
-            if hasattr(msg, "type") and msg.type == "ai":
-                assistant_message = extract_text(msg.content)
-                break
-            elif isinstance(msg, dict) and msg.get("role") == "assistant":
-                assistant_message = extract_text(msg.get("content", ""))
-                break
-    
-    return {"response": assistant_message}
 
 
 @app.patch("/conversations/{chat_id}")
 async def rename_conversation(chat_id: str, data: ConversationRename, request: Request):
     """Rename a conversation."""
-    checkpointer = request.app.state.checkpointer
-    config = {"configurable": {"thread_id": chat_id}}
+    db_path = request.app.state.db_path
     
-    # Get existing checkpoint
-    checkpoint_tuple = await checkpointer.aget_tuple(config)
-    if not checkpoint_tuple:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Ensure config has all required fields for aput
-    full_config = checkpoint_tuple.config.copy()
-    if "configurable" not in full_config:
-        full_config["configurable"] = {}
-    if "checkpoint_ns" not in full_config["configurable"]:
-        full_config["configurable"]["checkpoint_ns"] = ""
-    
-    # Update metadata with new title
-    new_metadata = checkpoint_tuple.metadata.copy() if checkpoint_tuple.metadata else {}
-    new_metadata["title"] = data.title
-    
-    # Save updated checkpoint with new metadata
-    await checkpointer.aput(
-        full_config,
-        checkpoint_tuple.checkpoint,
-        new_metadata,
-        {}
-    )
+    async with aiosqlite.connect(db_path) as db:
+        # Check if conversation exists
+        cursor = await db.execute("SELECT id FROM conversations WHERE id = ?", (chat_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Update title and updated_at
+        now = datetime.now().timestamp()
+        await db.execute(
+            "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
+            (data.title, now, chat_id)
+        )
+        await db.commit()
     
     return {"id": chat_id, "title": data.title}
 
@@ -323,16 +233,43 @@ async def rename_conversation(chat_id: str, data: ConversationRename, request: R
 @app.delete("/conversations/{chat_id}")
 async def delete_conversation(chat_id: str, request: Request):
     """Delete a conversation and its project directory."""
+    db_path = request.app.state.db_path
+    
+    # Delete from database
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("DELETE FROM conversations WHERE id = ?", (chat_id,))
+        await db.commit()
+    
     # Delete project directory
     project_path = PROJECTS_DIR / chat_id
     if project_path.exists():
         shutil.rmtree(project_path)
     
-    # Delete checkpoints
-    checkpointer = request.app.state.checkpointer
-    await checkpointer.adelete_thread(chat_id)
-    
     return {"status": "deleted", "id": chat_id}
+
+
+@app.get("/conversations/{chat_id}/metadata")
+async def get_conversation_metadata(chat_id: str, request: Request):
+    """Get conversation metadata (title, etc)."""
+    db_path = request.app.state.db_path
+    
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, title, created_at, updated_at FROM conversations WHERE id = ?",
+            (chat_id,)
+        )
+        row = await cursor.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        return {
+            "id": row["id"],
+            "title": row["title"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"]
+        }
 
 
 # =============================================================================
@@ -344,7 +281,8 @@ async def list_files(chat_id: str):
     """List all files in a conversation's project directory."""
     project_path = PROJECTS_DIR / chat_id
     if not project_path.exists():
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        # Create the directory if it doesn't exist (new conversation)
+        project_path.mkdir(parents=True, exist_ok=True)
     
     files = []
     for file_path in project_path.iterdir():
@@ -363,7 +301,7 @@ async def upload_file(chat_id: str, file: UploadFile = File(...)):
     """Upload a file to the conversation's project directory."""
     project_path = PROJECTS_DIR / chat_id
     if not project_path.exists():
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        project_path.mkdir(parents=True, exist_ok=True)
     
     file_path = project_path / file.filename
     
