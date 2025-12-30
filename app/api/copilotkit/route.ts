@@ -14,7 +14,7 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 const runtime = new CopilotRuntime({
   agents: {
     // Agent name must match the name defined in your FastAPI backend
-    gemini_agent: new LangGraphHttpAgent({
+    daedalus_agent: new LangGraphHttpAgent({
       url: process.env.AGENT_URL || "http://localhost:8000",
     }),
   },

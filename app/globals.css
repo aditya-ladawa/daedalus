@@ -17,7 +17,7 @@
   --primary-700: #0f5a65;
   --primary-800: #0a4450;
   --primary-900: #052e3b;
-  
+
   /* Neutral Palette */
   --neutral-0: #ffffff;
   --neutral-50: #f8fafc;
@@ -37,28 +37,28 @@
   --background-elevated: var(--neutral-0);
   --background-subtle: var(--neutral-100);
   --background-muted: var(--neutral-200);
-  
+
   --foreground: var(--neutral-900);
   --foreground-muted: var(--neutral-600);
   --foreground-subtle: var(--neutral-400);
-  
+
   --primary: var(--primary-500);
   --primary-hover: var(--primary-600);
   --primary-active: var(--primary-700);
   --primary-subtle: var(--primary-50);
   --primary-foreground: var(--neutral-0);
-  
+
   --accent: var(--primary-400);
   --accent-subtle: rgba(26, 134, 143, 0.08);
-  
+
   --border: var(--neutral-200);
   --border-muted: var(--neutral-100);
   --border-strong: var(--neutral-300);
   --border-focus: var(--primary-400);
-  
+
   --ring: rgba(26, 134, 143, 0.25);
   --ring-error: rgba(239, 68, 68, 0.25);
-  
+
   /* Status Colors */
   --success: #10b981;
   --success-subtle: rgba(16, 185, 129, 0.1);
@@ -72,11 +72,14 @@
   /* Material Elevation System */
   --elevation-0: none;
   --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-  --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
+    0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.06),
+    0 10px 10px -5px rgba(0, 0, 0, 0.02);
   --elevation-5: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  
+
   /* Inset shadows for depth */
   --inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.04);
   --inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -107,10 +110,10 @@
   --radius-full: 9999px;
 
   /* Typography */
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'Geist Mono', 'SF Mono', Consolas, monospace;
-  
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono", "SF Mono", Consolas, monospace;
+
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -132,7 +135,7 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  
+
   --duration-instant: 50ms;
   --duration-fast: 150ms;
   --duration-normal: 200ms;
@@ -156,33 +159,36 @@
   --background-elevated: var(--neutral-900);
   --background-subtle: var(--neutral-800);
   --background-muted: var(--neutral-700);
-  
+
   --foreground: var(--neutral-50);
   --foreground-muted: var(--neutral-400);
   --foreground-subtle: var(--neutral-500);
-  
+
   --primary: var(--primary-400);
   --primary-hover: var(--primary-300);
   --primary-active: var(--primary-200);
   --primary-subtle: rgba(77, 178, 184, 0.12);
   --primary-foreground: var(--neutral-950);
-  
+
   --accent: var(--primary-300);
   --accent-subtle: rgba(77, 178, 184, 0.1);
-  
+
   --border: var(--neutral-800);
   --border-muted: var(--neutral-900);
   --border-strong: var(--neutral-700);
   --border-focus: var(--primary-400);
-  
+
   --ring: rgba(77, 178, 184, 0.3);
-  
+
   --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.35), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+  --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.25),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+    0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.35),
+    0 10px 10px -5px rgba(0, 0, 0, 0.15);
   --elevation-5: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  
+
   --inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   --inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -209,9 +215,12 @@
     --border-focus: var(--primary-400);
     --ring: rgba(77, 178, 184, 0.3);
     --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
-    --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-    --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.35), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+    --elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.25),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --elevation-4: 0 20px 25px -5px rgba(0, 0, 0, 0.35),
+      0 10px 10px -5px rgba(0, 0, 0, 0.15);
     --elevation-5: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     --inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.2);
     --inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -222,7 +231,9 @@
    Base Reset & Defaults
    ===================================================== */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -266,7 +277,12 @@ body {
    Typography
    ===================================================== */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-display);
   font-weight: 600;
   line-height: var(--leading-tight);
@@ -274,12 +290,25 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-h1 { font-size: clamp(2.5rem, 5vw, var(--text-6xl)); font-weight: 700; }
-h2 { font-size: clamp(1.75rem, 3.5vw, var(--text-4xl)); }
-h3 { font-size: clamp(1.25rem, 2.5vw, var(--text-2xl)); }
-h4 { font-size: var(--text-xl); }
-h5 { font-size: var(--text-lg); }
-h6 { font-size: var(--text-base); }
+h1 {
+  font-size: clamp(2.5rem, 5vw, var(--text-6xl));
+  font-weight: 700;
+}
+h2 {
+  font-size: clamp(1.75rem, 3.5vw, var(--text-4xl));
+}
+h3 {
+  font-size: clamp(1.25rem, 2.5vw, var(--text-2xl));
+}
+h4 {
+  font-size: var(--text-xl);
+}
+h5 {
+  font-size: var(--text-lg);
+}
+h6 {
+  font-size: var(--text-base);
+}
 
 .container {
   width: 100%;
@@ -303,11 +332,13 @@ a:hover {
   color: var(--primary);
 }
 
-strong, b {
+strong,
+b {
   font-weight: 600;
 }
 
-code, pre {
+code,
+pre {
   font-family: var(--font-mono);
 }
 
@@ -382,7 +413,7 @@ code, pre {
 }
 
 .hero::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 50%;
@@ -480,8 +511,7 @@ code, pre {
   border-radius: var(--radius-xl);
   box-shadow: var(--elevation-1);
   overflow: hidden;
-  transition: 
-    box-shadow var(--duration-normal) var(--ease-out),
+  transition: box-shadow var(--duration-normal) var(--ease-out),
     border-color var(--duration-normal) var(--ease-out),
     transform var(--duration-normal) var(--ease-out);
 }
@@ -599,8 +629,7 @@ code, pre {
   gap: var(--space-2);
   opacity: 0.4;
   transform: scale(0.95);
-  transition: 
-    opacity var(--duration-fast) var(--ease-out),
+  transition: opacity var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out);
   z-index: 10;
@@ -612,7 +641,8 @@ code, pre {
   transform: scale(1);
 }
 
-.delete-btn, .rename-btn {
+.delete-btn,
+.rename-btn {
   background: var(--background-subtle) !important;
   border: 1px solid var(--border) !important;
   color: var(--foreground-muted) !important;
@@ -653,8 +683,7 @@ code, pre {
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
-  transition: 
-    background var(--duration-fast) var(--ease-out),
+  transition: background var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
@@ -775,8 +804,7 @@ code, pre {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--inset-sm);
-  transition: 
-    border-color var(--duration-fast) var(--ease-out),
+  transition: border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out);
 }
@@ -843,7 +871,9 @@ code, pre {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* =====================================================
@@ -859,8 +889,7 @@ code, pre {
   border-radius: var(--radius-lg);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: 
-    background var(--duration-fast) var(--ease-out),
+  transition: background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
@@ -988,7 +1017,9 @@ code, pre {
 }
 
 @keyframes typing-bounce {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
@@ -1016,8 +1047,7 @@ code, pre {
   border: 1px solid var(--border);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
-  transition: 
-    border-color var(--duration-fast) var(--ease-out),
+  transition: border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
@@ -1038,8 +1068,7 @@ code, pre {
   color: var(--foreground-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: 
-    background var(--duration-fast) var(--ease-out),
+  transition: background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
@@ -1067,8 +1096,7 @@ code, pre {
   border: none;
   cursor: not-allowed;
   flex-shrink: 0;
-  transition: 
-    background var(--duration-fast) var(--ease-out),
+  transition: background var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
@@ -1129,14 +1157,24 @@ code, pre {
    ===================================================== */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes gradient-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes fadeInUp {
@@ -1195,18 +1233,29 @@ code, pre {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -1336,14 +1385,13 @@ code, pre {
   width: 4px;
   cursor: col-resize;
   background: var(--border);
-  transition: 
-    background var(--duration-fast) var(--ease-out),
+  transition: background var(--duration-fast) var(--ease-out),
     width var(--duration-fast) var(--ease-out);
   position: relative;
 }
 
 .resize-handle::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   width: 12px;
@@ -1386,4 +1434,186 @@ code, pre {
   background: color-mix(in srgb, var(--background-elevated), transparent 20%);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
+}
+
+/* =====================================================
+   CopilotChat Theme & Layout Overrides
+   ===================================================== */
+
+:root {
+  --copilot-kit-primary-color: var(--primary);
+  --copilot-kit-contrast-color: var(--primary-foreground);
+  --copilot-kit-secondary-color: var(--background-elevated);
+  --copilot-kit-secondary-contrast-color: var(--foreground);
+  --copilot-kit-muted-color: var(--foreground-muted);
+  --copilot-kit-separator-color: var(--border);
+  --copilot-kit-background-color: var(--background);
+  --copilot-kit-scrollbar-color: var(--border);
+  --copilot-kit-response-button-background: var(--background-elevated);
+}
+
+.copilot-chat-container {
+  /* Force full height and flex layout */
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100% !important;
+  background: var(--background) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Target the internal messages list container */
+.copilot-chat-container > div:first-child {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important; /* Allow growing */
+}
+
+/* Target the input wrapper (usually at the bottom) */
+.copilot-chat-container > div:last-child {
+  flex-shrink: 0 !important;
+  background: var(--background) !important;
+  z-index: 10;
+}
+
+/* Fix Branding / "Powered by" visibility */
+.copilot-chat-container a[href*="copilotkit"] {
+  display: none !important;
+}
+
+/* =====================================================
+   Deep Component Customization
+   ===================================================== */
+
+/* Message Bubbles - Generic Targeting for robustness */
+.copilot-chat-container [data-element="message-bubble"] {
+  border-radius: var(--radius-xl) !important;
+  padding: var(--space-3) var(--space-4) !important;
+  font-size: var(--text-sm) !important;
+  line-height: 1.6 !important;
+  box-shadow: none !important;
+}
+
+/* User Bubble */
+.copilot-chat-container [data-message-role="user"] [data-element="message-bubble"] {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-bottom-right-radius: var(--radius-xs) !important;
+}
+
+/* Assistant Bubble */
+.copilot-chat-container [data-message-role="assistant"] [data-element="message-bubble"] {
+  background-color: var(--background-elevated) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+  border-bottom-left-radius: var(--radius-xs) !important;
+}
+
+/* Input Area Styling */
+.copilot-chat-container textarea {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--background-elevated) !important;
+  color: var(--foreground) !important;
+  padding: var(--space-3) !important;
+  padding-right: var(--space-12) !important; /* Space for send button */
+  box-shadow: none !important;
+  font-size: var(--text-sm) !important;
+  min-height: 48px !important; /* Ensure touch text size */
+}
+
+.copilot-chat-container textarea:focus {
+  outline: none !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary-subtle) !important;
+}
+
+/* Send Button Container Override */
+.copilot-chat-container div:has(> button[aria-label="Send"]) {
+  position: absolute !important;
+  bottom: var(--space-4) !important;
+  right: var(--space-4) !important;
+  height: auto !important;
+  width: auto !important;
+}
+
+/* Send Button */
+.copilot-chat-container button[aria-label="Send"] {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-2) !important;
+  height: 32px !important;
+  width: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+}
+
+.copilot-chat-container button[aria-label="Send"]:hover {
+  background-color: var(--primary-hover) !important;
+  transform: scale(1.05);
+}
+
+.copilot-chat-container button[aria-label="Send"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--neutral-400) !important;
+}
+
+/* Fix Icon Overlap issues */
+.copilot-chat-container [data-element="message-icon"] {
+  margin-right: var(--space-3) !important;
+  align-self: flex-start !important;
+  margin-top: var(--space-1) !important;
+}
+
+
+
+
+
+/* KaTeX equation styling */
+.katex-display {
+  margin: var(--space-3) 0;
+  overflow-x: auto;
+}
+
+.katex {
+  font-size: 1.1em;
+}
+
+/* Markdown content in messages */
+.copilot-chat-container p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.copilot-chat-container p:last-child {
+  margin-bottom: 0;
+}
+
+.copilot-chat-container pre {
+  background: var(--background-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: var(--space-2) 0;
+}
+
+.copilot-chat-container code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--background-subtle);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-xs);
+}
+
+.copilot-chat-container pre code {
+  background: none;
+  padding: 0;
 }

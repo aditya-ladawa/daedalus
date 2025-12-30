@@ -15,7 +15,7 @@ export default function ChatLayout({
   return (
     <CopilotKit 
       runtimeUrl="/api/copilotkit" 
-      agent="gemini_agent"
+      agent="daedalus_agent"
       threadId={chatId}
     >
       {children}

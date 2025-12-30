@@ -46,6 +46,14 @@ load_dotenv()
 # Constants
 PROJECTS_DIR = Path("projects")
 
+# # Initialize chat model at module level
+# chat_model = init_chat_model(
+#     model="gemini-3-flash-preview",
+#     model_provider="google_genai",
+#     temperature=0.1,
+#     thinking_level='minimal'
+# )
+
 # Initialize chat model at module level
 chat_model = init_chat_model(
     model="gemini-3-flash-preview",
@@ -89,18 +97,18 @@ async def lifespan(app: FastAPI):
         app.state.checkpointer = checkpointer
         
         # Create the ReAct agent with LangGraph
-        graph = create_agent(
+        graph = create_react_agent(
             model=chat_model,
             tools=[web_search, read_todos, write_todos, think_strategically],
             checkpointer=checkpointer,
-            state=DeepAgentState
+            state_schema=DeepAgentState
         )
         
         # Add the CopilotKit AG-UI endpoint at root
         add_langgraph_fastapi_endpoint(
             app=app,
             agent=LangGraphAGUIAgent(
-                name="gemini_agent",
+                name="daedalus_agent",
                 description="An AI assistant powered by Gemini and LangGraph with persistent memory.",
                 graph=graph,
             ),

@@ -1,4 +1,6 @@
 
+from typing import Annotated
+
 from tavily import TavilyClient
 import os
 from langchain.tools import tool
@@ -6,7 +8,9 @@ from langchain.tools import tool
 from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage, SystemMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.prebuilt import InjectedState
-from langgraph.graph import Command
+from langgraph.types import Command
+
+from api.all_schemas import DeepAgentState, Todo
 
 from dotenv import load_dotenv
 
@@ -17,7 +21,7 @@ load_dotenv()
 tavily_client = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
 
 
-@tool
+@tool(parse_docstring=True)
 def web_search(query: str) -> str:
     """
     Search the web for current information on any topic.

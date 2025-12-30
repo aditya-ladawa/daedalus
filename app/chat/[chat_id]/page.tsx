@@ -7,7 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { FileNavigator } from "../../components/FileNavigator";
 import { FileViewer } from "../../components/FileViewer";
-import { CopilotSidebar } from "@copilotkit/react-ui";
+import { ToolCallRenderer } from "../../components/ToolCallRenderer";
+import { CopilotChat } from "@copilotkit/react-ui";
+import "katex/dist/katex.min.css";
 
 interface FileInfo {
   name: string;
@@ -73,20 +75,38 @@ export default function ChatPage() {
   
   // Panel widths
   const [leftWidth, setLeftWidth] = useState(280);
+  const [rightWidth, setRightWidth] = useState(400);
   
   // Saved widths for restore
   const [savedLeftWidth, setSavedLeftWidth] = useState(280);
+  const [savedRightWidth, setSavedRightWidth] = useState(400);
   
   // Collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   
   // Resize states
   const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
 
   // Constraints
   const MIN_WIDTH = 240;
   const MAX_LEFT_WIDTH = 400;
+  const MIN_RIGHT_WIDTH = 320;
+  // Dynamic max width logic will be in resize handler
+  const [maxRightWidth, setMaxRightWidth] = useState(600);
   const COLLAPSED_WIDTH = 52;
+  
+  useEffect(() => {
+    // Set initial max width to 50% of screen or 800px, whichever is smaller, but at least 600px
+    const updateMaxWidth = () => {
+      setMaxRightWidth(Math.max(600, window.innerWidth * 0.5));
+    };
+    
+    updateMaxWidth();
+    window.addEventListener('resize', updateMaxWidth);
+    return () => window.removeEventListener('resize', updateMaxWidth);
+  }, []);
 
   useEffect(() => {
     loadConversation();
@@ -169,6 +189,17 @@ export default function ChatPage() {
     }
   }, [leftCollapsed, leftWidth, savedLeftWidth]);
 
+  const toggleRightPanel = useCallback(() => {
+    if (rightCollapsed) {
+      setRightWidth(savedRightWidth);
+      setRightCollapsed(false);
+    } else {
+      setSavedRightWidth(rightWidth);
+      setRightWidth(COLLAPSED_WIDTH);
+      setRightCollapsed(true);
+    }
+  }, [rightCollapsed, rightWidth, savedRightWidth]);
+
   // Resize handlers
   const handleLeftResize = useCallback((e: MouseEvent) => {
     const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_LEFT_WIDTH, e.clientX));
@@ -176,8 +207,15 @@ export default function ChatPage() {
     if (leftCollapsed) setLeftCollapsed(false);
   }, [leftCollapsed]);
 
+  const handleRightResize = useCallback((e: MouseEvent) => {
+    const newWidth = Math.max(MIN_RIGHT_WIDTH, Math.min(maxRightWidth, window.innerWidth - e.clientX));
+    setRightWidth(newWidth);
+    if (rightCollapsed) setRightCollapsed(false);
+  }, [rightCollapsed, maxRightWidth]);
+
   const handleMouseUp = useCallback(() => {
     setIsResizingLeft(false);
+    setIsResizingRight(false);
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
   }, []);
@@ -185,9 +223,10 @@ export default function ChatPage() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizingLeft) handleLeftResize(e);
+      if (isResizingRight) handleRightResize(e);
     };
 
-    if (isResizingLeft) {
+    if (isResizingLeft || isResizingRight) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "col-resize";
@@ -198,12 +237,12 @@ export default function ChatPage() {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizingLeft, handleLeftResize, handleMouseUp]);
+  }, [isResizingLeft, isResizingRight, handleLeftResize, handleRightResize, handleMouseUp]);
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--background)", position: "relative" }}>
       {/* Resize Overlay - Prevents iframes from capturing mouse events during resize */}
-      {isResizingLeft && (
+      {(isResizingLeft || isResizingRight) && (
         <div 
           style={{ 
             position: "fixed", 
@@ -370,10 +409,58 @@ export default function ChatPage() {
             <FileViewer chatId={chatId} filename={selectedFile} onClose={() => setSelectedFile(null)} />
           </div>
         </div>
-      </div>
 
-      {/* CopilotSidebar - Replaces the custom ChatPanel */}
-      <CopilotSidebar />
+        {/* Right Resize Handle */}
+        <div
+          onMouseDown={(e) => { e.preventDefault(); setIsResizingRight(true); }}
+          className={`resize-handle ${isResizingRight ? 'active' : ''}`}
+        />
+
+        {/* Right Panel - Chat */}
+        <motion.div
+          animate={{ width: rightWidth }}
+          transition={{ type: "spring", stiffness: 400, damping: 35 }}
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            background: "var(--background-elevated)",
+            borderLeft: "1px solid var(--border)"
+          }}
+        >
+          <AnimatePresence mode="wait">
+            {rightCollapsed ? (
+              <motion.div
+                key="collapsed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "var(--space-4)" }}
+              >
+                <CollapseButton direction="left" onClick={toggleRightPanel} title="Expand chat" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="expanded"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ height: "100%", display: "flex", flexDirection: "column" }}
+              >
+                <div className="panel-header">
+                  <span className="panel-title">Chat</span>
+                  <CollapseButton direction="right" onClick={toggleRightPanel} title="Collapse" />
+                </div>
+                <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                  <ToolCallRenderer />
+                  <CopilotChat className="copilot-chat-container" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </div>
     </div>
   );
 }
