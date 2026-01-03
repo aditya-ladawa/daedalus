@@ -1,0 +1,12 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "./src/agent_graph/graph.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.12",
+  "config": {
+      "recursion_limit": 20000
+  }
+}
