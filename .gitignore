@@ -181,3 +181,12 @@ tests/
 .claude/
 
 README_CONFIG.md
+
+
+lightrag.log
+lightrag_data/
+lightrag_data_*/
+
+src/rag/files_to_embed
+src/rag/files_to_embed_*/
+src/rag/time_it/
