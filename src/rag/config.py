@@ -5,6 +5,7 @@ Storage Mode: Set STORAGE_MODE to "cloud" or "local"
 Workspace: Each conversation/project should have its own WORKSPACE for data isolation
 """
 import os
+import asyncio
 import numpy as np
 from pathlib import Path
 from lightrag import LightRAG
@@ -197,7 +198,8 @@ async def get_rag_instance(
     model = QWEN_MODEL if backend == "qwen" else GEMINI_MODEL
     llm_function = create_llm_func(backend)
     
-    Path(target_dir).mkdir(parents=True, exist_ok=True)
+    # Ensure working directory exists (non-blocking)
+    await asyncio.to_thread(lambda: Path(target_dir).mkdir(parents=True, exist_ok=True))
     
     # Base configuration
     config = {
@@ -221,9 +223,14 @@ async def get_rag_instance(
     print(f"📂 Working Dir: {target_dir}")
     print(f"🏷️  Workspace: {target_workspace}")
     
-    rag = LightRAG(**config)
+    # Initialize LightRAG in a thread because it performs blocking IO (tiktoken loading)
+    rag = await asyncio.to_thread(LightRAG, **config)
+
+    # Initialize storages
+    # Note: LightRAG uses sync QdrantClient which makes blocking calls.
+    # BG_JOB_ISOLATED_LOOPS=true in .env handles this for LangGraph deployment
     await rag.initialize_storages()
-    
+
     print("✅ LightRAG ready")
     return rag
 
