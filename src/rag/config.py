@@ -1,5 +1,8 @@
 """
-Shared Configuration for LightRAG with Gemini and QWEN (OpenRouter)
+LightRAG Configuration
+
+Storage Mode: Set STORAGE_MODE to "cloud" or "local"
+Workspace: Each conversation/project should have its own WORKSPACE for data isolation
 """
 import os
 import numpy as np
@@ -7,7 +10,7 @@ from pathlib import Path
 from lightrag import LightRAG
 from lightrag.utils import setup_logger, wrap_embedding_func_with_attrs
 from lightrag.llm.gemini import gemini_model_complete
-from lightrag.llm.openai import openai_complete_if_cache, openai_embed
+from lightrag.llm.openai import openai_complete_if_cache
 from google import genai
 from google.genai import types
 
@@ -18,39 +21,61 @@ load_dotenv()
 setup_logger("lightrag", level="INFO")
 
 # =============================================================================
-# CONFIG
+# STORAGE CONFIGURATION
 # =============================================================================
 
-# WORKING_DIR = "./lightrag_data"
-WORKING_DIR = "./lightrag_data_2"
+# Storage mode: "cloud" or "local" (user must explicitly choose)
+STORAGE_MODE = "cloud"
 
-# Backend Selection: "gemini" or "qwen" (via OpenRouter)
-LLM_BACKEND = os.getenv("LLM_BACKEND", "qwen")  # Default to gemini
+# Working directory (always needed for KV cache)
+WORKING_DIR = "./lightrag_data_local"
 
-# Gemini Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Workspace for data isolation
+# IMPORTANT: Each conversation/project should have a unique workspace
+# This isolates embeddings and graph data per project
+WORKSPACE = "default"
 
-# QWEN/OpenRouter Configuration
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "n/a")
+# =============================================================================
+# LLM CONFIGURATION
+# =============================================================================
+
+# Backend: "gemini" or "qwen" (via OpenRouter)
+LLM_BACKEND = "gemini"
+
+# Gemini
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-2.5-flash"  # Using stable version
+# QWEN/OpenRouter
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 QWEN_MODEL = "qwen/qwen3-vl-32b-instruct"
 
-# Model configuration based on backend
-if LLM_BACKEND == "qwen":
-    LLM_MODEL = QWEN_MODEL
-    # Use Gemini embeddings for both backends (user has access to Gemini embeddings)
-    EMBEDDING_MODEL = "gemini-embedding-001"
-    EMBEDDING_DIM = 1536
-else:  # Default to Gemini
-    LLM_MODEL = "gemini-3-flash-preview"
-    EMBEDDING_MODEL = "gemini-embedding-001"
-    EMBEDDING_DIM = 1536  # gemini-embedding-001 supports up to 3072, using 1536
+# Model selection
+LLM_MODEL = QWEN_MODEL if LLM_BACKEND == "qwen" else GEMINI_MODEL
+
+# Embedding (always Gemini)
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIM = 1536
 
 # =============================================================================
-# FUNCTIONS
+# CLOUD STORAGE CREDENTIALS (only used when STORAGE_MODE="cloud")
+# =============================================================================
+
+# Qdrant Cloud
+QDRANT_URL = os.environ.get("QDRANT_URL")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
+
+# Neo4j Aura
+NEO4J_URI = os.environ.get("NEO4J_URI")
+NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
+
+# =============================================================================
+# LLM & EMBEDDING FUNCTIONS
 # =============================================================================
 
 _genai_client = None
+
 
 def get_genai_client():
     global _genai_client
@@ -59,34 +84,38 @@ def get_genai_client():
     return _genai_client
 
 
-async def llm_func(prompt, system_prompt=None, history_messages=[], **kwargs) -> str:
-    """LLM function supporting both Gemini and QWEN (via OpenRouter)."""
-    
-    if LLM_BACKEND == "qwen":
-        # Use OpenAI-compatible API for QWEN via OpenRouter
-        return await openai_complete_if_cache(
-            model=LLM_MODEL,
-            prompt=prompt,
-            system_prompt=system_prompt,
-            history_messages=history_messages,
-            api_key=OPENROUTER_API_KEY,
-            base_url=OPENROUTER_BASE_URL,
-            **kwargs
-        )
-    else:
-        # Use Gemini with minimal thinking config
-        thinking_config = types.ThinkingConfig(thinking_level="minimal")
-        gen_config = types.GenerateContentConfig(thinking_config=thinking_config)
+def create_llm_func(backend: str):
+    """Create LLM function for the specified backend."""
+    async def llm_func_impl(prompt, system_prompt=None, history_messages=[], **kwargs) -> str:
+        if backend == "qwen":
+            return await openai_complete_if_cache(
+                model=QWEN_MODEL,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                history_messages=history_messages,
+                api_key=OPENROUTER_API_KEY,
+                base_url=OPENROUTER_BASE_URL,
+                **kwargs
+            )
+        else:  # gemini
+            thinking_config = types.ThinkingConfig(thinking_level="minimal")
+            gen_config = types.GenerateContentConfig(thinking_config=thinking_config)
+            return await gemini_model_complete(
+                prompt,
+                system_prompt=system_prompt,
+                history_messages=history_messages,
+                api_key=GEMINI_API_KEY,
+                model_name=GEMINI_MODEL,
+                config=gen_config,
+                **kwargs
+            )
+    return llm_func_impl
 
-        return await gemini_model_complete(
-            prompt,
-            system_prompt=system_prompt,
-            history_messages=history_messages,
-            api_key=GEMINI_API_KEY,
-            model_name=LLM_MODEL,
-            config=gen_config, 
-            **kwargs
-        )
+
+# Default LLM function (for backward compatibility)
+async def llm_func(prompt, system_prompt=None, history_messages=[], **kwargs) -> str:
+    """LLM function supporting both Gemini and QWEN (uses global LLM_BACKEND)."""
+    return await create_llm_func(LLM_BACKEND)(prompt, system_prompt, history_messages, **kwargs)
 
 
 @wrap_embedding_func_with_attrs(
@@ -95,11 +124,8 @@ async def llm_func(prompt, system_prompt=None, history_messages=[], **kwargs) ->
     model_name=EMBEDDING_MODEL
 )
 async def embedding_func(texts: list[str]) -> np.ndarray:
-    """Embedding function using Gemini embeddings for all backends."""
-    # Always use Gemini embedding (user has access to Gemini embeddings)
+    """Embedding function using Gemini."""
     client = get_genai_client()
-    
-    # Call embed_content API
     result = client.models.embed_content(
         model=EMBEDDING_MODEL,
         contents=texts,
@@ -108,46 +134,122 @@ async def embedding_func(texts: list[str]) -> np.ndarray:
             output_dimensionality=EMBEDDING_DIM
         )
     )
-    
-    # Extract and normalize
     embeddings = []
     for emb in result.embeddings:
         vec = np.array(emb.values)
         vec = vec / np.linalg.norm(vec)
         embeddings.append(vec)
-    
     return np.array(embeddings)
 
 
-async def get_rag_instance(working_dir: str = None) -> LightRAG:
-    """Initialize and return a LightRAG instance pointing to working_dir (defaults to env var or constant)."""
-    target_dir = working_dir or WORKING_DIR
+# =============================================================================
+# RAG INSTANCE FACTORY
+# =============================================================================
+
+def _get_cloud_config() -> dict:
+    """Get cloud storage configuration (Qdrant + Neo4j)."""
+    if not QDRANT_URL or not NEO4J_URI:
+        raise ValueError(
+            "Cloud storage requires QDRANT_URL and NEO4J_URI. "
+            "Set these in .env or switch to STORAGE_MODE=local"
+        )
+    
+    # LightRAG reads connection details from environment variables
+    # We only need to specify the storage class names
+    return {
+        # Vector storage: Qdrant Cloud
+        "vector_storage": "QdrantVectorDBStorage",
+        # Graph storage: Neo4j Aura
+        "graph_storage": "Neo4JStorage",
+    }
+
+
+def _get_local_config() -> dict:
+    """Get local storage configuration (NanoVectorDB + NetworkX)."""
+    # LightRAG uses these by default, no extra config needed
+    return {}
+
+
+async def get_rag_instance(
+    working_dir: str = None,
+    workspace: str = None,
+    storage_mode: str = None,
+    llm_backend: str = None,
+) -> LightRAG:
+    """
+    Initialize and return a LightRAG instance.
+    
+    Args:
+        working_dir: Override WORKING_DIR from env
+        workspace: Override WORKSPACE from env (for conversation isolation)
+        storage_mode: Override STORAGE_MODE ("cloud" or "local")
+        llm_backend: Override LLM_BACKEND ("gemini" or "qwen")
+    
+    Returns:
+        Configured LightRAG instance
+    """
+    target_dir = working_dir if working_dir is not None else WORKING_DIR
+    target_workspace = workspace if workspace is not None else WORKSPACE
+    mode = storage_mode if storage_mode is not None else STORAGE_MODE
+    backend = llm_backend if llm_backend is not None else LLM_BACKEND
+    
+    # Select model and LLM function based on backend
+    model = QWEN_MODEL if backend == "qwen" else GEMINI_MODEL
+    llm_function = create_llm_func(backend)
+    
     Path(target_dir).mkdir(parents=True, exist_ok=True)
     
-    print(f"🔄 Loading LightRAG from: {target_dir}")
-    rag = LightRAG(
-        working_dir=target_dir,
-        llm_model_func=llm_func,
-        llm_model_name=LLM_MODEL,
-        embedding_func=embedding_func,
-    )
-    # Initialize storages (loads existing data or creates new)
+    # Base configuration
+    config = {
+        "working_dir": target_dir,
+        "workspace": target_workspace,
+        "llm_model_func": llm_function,
+        "llm_model_name": model,
+        "embedding_func": embedding_func,
+    }
+    
+    # Add storage-specific config based on mode
+    if mode == "cloud":
+        print(f"☁️  Storage: Cloud (Qdrant + Neo4j)")
+        config.update(_get_cloud_config())
+    elif mode == "local":
+        print(f"💾 Storage: Local (NanoVectorDB + NetworkX)")
+        config.update(_get_local_config())
+    else:
+        raise ValueError(f"Invalid STORAGE_MODE: {mode}. Must be 'cloud' or 'local'")
+    
+    print(f"📂 Working Dir: {target_dir}")
+    print(f"🏷️  Workspace: {target_workspace}")
+    
+    rag = LightRAG(**config)
     await rag.initialize_storages()
-    print("✅ LightRAG loaded and ready.")
+    
+    print("✅ LightRAG ready")
     return rag
 
 
-def export_config_for_shell():
-    """Export configuration as shell environment variables for run_server.sh to source."""
-    print(f"export LLM_BACKEND={LLM_BACKEND}")
-    print(f"export LLM_MODEL={LLM_MODEL}")
-    print(f"export EMBEDDING_MODEL={EMBEDDING_MODEL}")
-    print(f"export OPENROUTER_BASE_URL={OPENROUTER_BASE_URL}")
-    print(f"export OPENROUTER_API_KEY={OPENROUTER_API_KEY}")
-    print(f"export GEMINI_API_KEY={GEMINI_API_KEY}")
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
+def print_config(storage_mode=None, workspace=None):
+    """Print current configuration."""
+    mode = storage_mode if storage_mode is not None else STORAGE_MODE
+    ws = workspace if workspace is not None else WORKSPACE
+    print("\n" + "="*50)
+    print("⚙️  LightRAG Configuration")
+    print("="*50)
+    print(f"  Storage Mode:    {mode}")
+    print(f"  Workspace:       {ws}")
+    print(f"  Working Dir:     {WORKING_DIR}")
+    print(f"  LLM Backend:     {LLM_BACKEND}")
+    print(f"  LLM Model:       {LLM_MODEL}")
+    print(f"  Embedding:       {EMBEDDING_MODEL} ({EMBEDDING_DIM}d)")
+    if mode == "cloud":
+        print(f"  Qdrant URL:      {QDRANT_URL[:50]}..." if len(QDRANT_URL) > 50 else f"  Qdrant URL:      {QDRANT_URL}")
+        print(f"  Neo4j URI:       {NEO4J_URI[:50]}..." if len(NEO4J_URI) > 50 else f"  Neo4j URI:       {NEO4J_URI}")
+    print("="*50 + "\n")
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--export-shell":
-        export_config_for_shell()
+    print_config()
