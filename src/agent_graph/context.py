@@ -6,20 +6,10 @@ import os
 from dataclasses import dataclass, field, fields
 from typing import Annotated
 
-from . import prompts
-
 
 @dataclass(kw_only=True)
 class Context:
     """The context for the agent."""
-
-    system_prompt: str = field(
-        default=prompts.SYSTEM_PROMPT,
-        metadata={
-            "description": "The system prompt to use for the agent's interactions. "
-            "This prompt sets the context and behavior for the agent."
-        },
-    )
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         default="google_genai/gemini-3-pro-preview",

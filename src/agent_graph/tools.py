@@ -19,6 +19,13 @@ from typing_extensions import TypedDict
 
 from agent_graph.context import Context
 from agent_graph.state import DeepAgentState, Todo
+from agent_graph import prompts
+
+# Import RAG tool
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from rag.rag_search_tool import search_research_papers
 
 load_dotenv()
 
@@ -375,10 +382,11 @@ def execute_bash(
             # Prepend activation command
             command = f"source {venv_activate} && {command}"
 
-        # Execute command with shell
+        # Execute command with shell (use bash explicitly to support 'source')
         result = subprocess.run(
             command,
             shell=True,
+            executable='/bin/bash',  # Use bash instead of /bin/sh to support 'source'
             capture_output=True,
             text=True,
             timeout=300,  # 5 minute timeout
@@ -435,8 +443,6 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
     Returns:
         A 'task' tool that can delegate work to specialized sub-agents
     """
-    from agent_graph.prompts import TASK_DESCRIPTION_PREFIX
-
     # Create agent registry
     agents = {}
 
@@ -474,7 +480,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
         f"- {_agent['name']}: {_agent['description']}" for _agent in subagents
     ]
 
-    @tool(description=TASK_DESCRIPTION_PREFIX.format(other_agents=other_agents_string))
+    @tool(description=prompts.TASK_DESCRIPTION_PREFIX.format(other_agents=other_agents_string))
     async def task(
         description: str,
         subagent_type: str,
@@ -525,92 +531,20 @@ SUB_AGENTS: List[SubAgent] = [
     SubAgent(
         name="internet_researcher",
         description="Web research specialist - conducts comprehensive, multi-angle research and returns FULL findings without summarization",
-        prompt="""You are an expert internet researcher for producing high-impact research papers.
-
-**Your Mission**: Conduct thorough, comprehensive research and return ALL relevant information.
-
-**Critical Rules**:
-1. **NEVER summarize** - Return FULL findings with complete details
-2. **Multiple searches** - Search from different angles to get comprehensive coverage
-3. **Quality over quantity** - Focus on authoritative, well-sourced information
-4. **Think strategically** - Use think_strategically after each search to plan next steps
-
-**Research Approach**:
-
-For each research task:
-1. **Initial Broad Search**: Start with general query to understand landscape
-2. **think_strategically**: Analyze what you found, identify specific angles to explore
-3. **Targeted Searches**: Multiple focused searches on specific aspects
-4. **think_strategically**: Assess coverage - what's still missing?
-5. **Fill Gaps**: Additional searches to cover unexplored angles
-6. **think_strategically**: Final quality check - is this comprehensive?
-
-**What to Return**:
-- **Full Details**: Complete information, not summaries
-- **Citations**: Always include source URLs
-- **Multiple Perspectives**: Different viewpoints on the topic
-- **Data & Evidence**: Specific numbers, studies, examples
-- **Context**: Background and current state
-- **Gaps**: Explicitly note what information you couldn't find
-
-**Example - BAD (one search, summarized)**:
-Query: "AI impact on wages"
-Search: "AI wage impact"
-Return: "AI affects wages in various ways..." (summary)
-
-**Example - GOOD (multiple searches, full details)**:
-Query: "AI impact on wages"
-1. Search: "AI wage premium empirical studies"
-   think_strategically: Found general trends, need specific data
-2. Search: "AI automation wage polarization data"
-   think_strategically: Got polarization data, need regional differences
-3. Search: "AI wage effects by industry sector"
-   think_strategically: Have industry data, need long-term projections
-4. Search: "AI wage impact future projections 2030"
-   think_strategically: Comprehensive coverage achieved
-Return: FULL findings from all 4 searches with complete details, citations, data
-
-**Quality Standards (Academic Rigor)**:
-- **Primary Sources**: Prioritize academic papers, government reports, and white papers over news articles.
-- **Methodology**: Always look for HOW data was collected (Sample size N=?, timeframe, specific conditions).
-- **Quantitative Depth**: Don't just say "wages increased". Say "wages increased by 12% (confidence interval 95%) in the manufacturing sector".
-- **Counter-Evidence**: Actively look for data that contradicts the main findings.
-
-You are a thorough researcher. Take time. Search multiple times. Return everything.""",
+        prompt=prompts.INTERNET_RESEARCHER_PROMPT,
         tools=["web_search", "think_strategically"],
     ),
     SubAgent(
         name="file_manager",
         description="File operations specialist - reads, writes, updates, and manages .md research files using bash commands",
-        prompt="""You are an expert file manager for a long-running research project.
-
-Your role:
-- Manage the project workspace using specialized tools (ls, read_file, write_file, edit_file)
-- Create well-structured, comprehensive research documents (.md)
-- Maintain file organization and integrity
-
-Tool Usage Guidelines:
-1. **Navigating**: Use `list_directory` (ls) to explore.
-2. **Reading**: Use `read_file` to get full content.
-3. **Writing**: Use `write_file` to CREATE or OVERWRITE files.
-   - WARNING: This deletes old content.
-4. **Editing**: Use `edit_file` to REPLACE text segments.
-   - Best for updating specific sections without converting to PDF or rewriting the whole file.
-5. **Searching**: Use `file_search` (glob) to find files, `file_content_search` (grep) to find text.
-
-PDF Generation:
-- Continue to use `execute_bash` for PDF conversion: `python md2pdf.py ...`
-- Also use `execute_bash` if you need complex shell commands (zip, tar, etc)
-
-Markdown Best Practices:
-- Use proper heading hierarchy (# ## ###)
-- Include table of contents for long documents
-- Format code blocks with syntax highlighting
-- Keep citations and references with URLs
-
-Remember: You are the guardian of the research data. Check before overwriting.
-CRITICAL: Execute tools SEQUENTIALLY. Do NOT call multiple tools at once (race conditions).""",
+        prompt=prompts.FILE_MANAGER_PROMPT,
         tools=["list_directory", "read_file", "write_file", "edit_file", "file_search", "file_content_search", "execute_bash"],
+    ),
+    SubAgent(
+        name="biomedical_researcher",
+        description="Biomedical research specialist - queries knowledge base of sleep disorders, psychiatric conditions, and Mendelian randomization studies",
+        prompt=prompts.BIOMEDICAL_RESEARCHER_PROMPT,
+        tools=["search_research_papers"],
     ),
 ]
 
@@ -720,6 +654,7 @@ ALL_TOOLS: List[Callable[..., Any]] = [
     file_search,
     file_content_search,
     execute_bash,
+    search_research_papers,
 ]
 
 # Default TOOLS for main agent (just orchestration)

@@ -62,13 +62,15 @@ def _build_agent_graph():
     print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
     print(f"    - file_manager: File operations specialist")
     print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
+    print(f"    - biomedical_researcher: Biomedical knowledge base specialist")
+    print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
     
     # Create the main agent using create_react_agent
     graph = create_react_agent(
         main_model,
         tools=main_agent_tools,
         state_schema=DeepAgentState,
-        prompt=ctx.system_prompt
+        prompt=prompts.SYSTEM_PROMPT
     )
     
     print("✅ Deep Research Agent ready!")
