@@ -20,10 +20,10 @@ class Context:
     )
 
     subagent_model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="google_genai/gemini-3-flash-preview",
+        default="google_genai/gemini-2.5-flash",
         metadata={
-            "description": "The name of the language model to use for sub-agents (internet_researcher, file_manager). "
-            "Should be in the form: provider/model-name. Defaults to the same model as the main agent."
+            "description": "The name of the language model to use for sub-agents (internet_researcher, biomedical_researcher, filesystem_reader, script_executor). "
+            "Should be in the form: provider/model-name."
         },
     )
 

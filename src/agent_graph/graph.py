@@ -28,10 +28,13 @@ def _build_agent_graph():
     - Task delegation tool (for spawning sub-agents)
     - Todo management tools (read_todos, write_todos)
     - Strategic thinking tool (think_strategically)
+    - Write tools (write_file, edit_file) for direct file operations
     
     Sub-agents are created dynamically by the task delegation tool with:
     - internet_researcher: Web search specialist
-    - file_manager: File operations specialist (bash-based)
+    - filesystem_reader: File system reader (read-only context gathering)
+    - script_executor: Script execution specialist (bash, PDF conversion)
+    - biomedical_researcher: RAG knowledge base specialist
     
     Returns:
         Compiled LangGraph agent ready for execution
@@ -51,23 +54,27 @@ def _build_agent_graph():
         researcher_model=subagent_model
     )
     
-    # Main agent tools: orchestration only (delegation + state management)
+    # Main agent tools: orchestration + direct write capabilities
     main_agent_tools = TOOLS + [task_tool]
     
     print("🧠 Building Deep Research Agent...")
-    print(f"  Main Agent: {len(main_agent_tools)} tools (orchestration only)")
+    print(f"  Main Agent: {len(main_agent_tools)} tools (orchestration + writing)")
     print(f"    - Model: {ctx.model} (configurable via Studio)")
-    print("  Sub-agents:")
+    print(f"    - Direct tools: read_todos, write_todos, think_strategically, write_file, edit_file")
+    print("  Sub-agents (for context gathering):")
     print(f"    - internet_researcher: Web search specialist")
     print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
-    print(f"    - file_manager: File operations specialist")
+    print(f"    - filesystem_reader: File system reader (read-only)")
     print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
-    print(f"    - biomedical_researcher: Biomedical knowledge base specialist")
+    print(f"    - script_executor: Script execution specialist")
+    print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
+    print(f"    - biomedical_researcher: RAG knowledge base specialist")
     print(f"      Model: {ctx.subagent_model} (configurable via Studio)")
     
     # Create the main agent using create_react_agent
+    # Disable parallel tool calls to prevent concurrent state updates
     graph = create_react_agent(
-        main_model,
+        main_model.bind(parallel_tool_calls=False),
         tools=main_agent_tools,
         state_schema=DeepAgentState,
         prompt=prompts.SYSTEM_PROMPT

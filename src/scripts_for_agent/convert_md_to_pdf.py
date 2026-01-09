@@ -86,11 +86,11 @@ def convert_md_to_pdf(
         md_content = md_path.read_text(encoding='utf-8')
 
         # Create PDF with custom styling (no TOC to avoid library bugs)
+        # Note: We pass CSS directly to MarkdownPdf constructor, not as part of the content
         pdf = MarkdownPdf(toc_level=0)
 
-        # Add custom CSS for fonts
-        custom_css = f"""
-        <style>
+        # Set custom CSS via meta tags (markdown-pdf specific approach)
+        pdf.meta["css"] = f"""
             @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
             body {{
@@ -202,11 +202,10 @@ def convert_md_to_pdf(
                 display: block;
                 margin: 1em auto;
             }}
-        </style>
         """
 
-        # Add section with custom CSS and markdown content
-        pdf.add_section(Section(custom_css + md_content))
+        # Add section with ONLY markdown content (CSS is separate)
+        pdf.add_section(Section(md_content))
 
         # Save PDF
         pdf.save(str(pdf_path))

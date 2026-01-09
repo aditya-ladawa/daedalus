@@ -44,22 +44,58 @@ ALLOWED_WORK_DIR.mkdir(exist_ok=True)
 def web_search(query: str) -> str:
     """Search the web for current information on any topic.
 
+    This tool uses Tavily AI search optimized for research. It returns comprehensive
+    results including titles, content snippets, URLs, and relevance scores.
+
     Args:
         query: The search query to look up.
 
     Returns:
-        Search results with relevant information.
+        Search results with detailed information and source URLs for citation.
     """
-    response = tavily_client.search(query, max_results=5)
+    # Tavily search with basic mode to reduce API costs
+    response = tavily_client.search(
+        query,
+        max_results=5,  # Reduced for cost savings
+        search_depth="basic",  # Use basic mode to reduce API consumption
+        include_answer=False,  # We want raw results, not LLM-generated answers
+        include_raw_content=False,  # Don't need full HTML (too verbose)
+        include_domains=[],  # Allow all domains
+        exclude_domains=[]  # No exclusions
+    )
 
-    # Format results
+    # Format results with enhanced information
     results = []
-    for result in response.get("results", []):
-        results.append(
-            f"**{result['title']}**\n{result['content']}\nURL: {result['url']}\n"
-        )
+    source_urls = []
 
-    return "\n---\n".join(results) if results else "No results found."
+    for idx, result in enumerate(response.get("results", []), 1):
+        title = result.get('title', 'No title')
+        url = result.get('url', '')
+        content = result.get('content', 'No content available')
+        score = result.get('score', 0)
+
+        # Track URLs for references section
+        source_urls.append(f"- [{title}]({url})")
+
+        # Format individual result
+        result_text = f"**Result {idx}: {title}**\n"
+        result_text += f"Relevance Score: {score:.3f}\n"
+        result_text += f"{content}\n"
+        result_text += f"Source: {url}\n"
+
+        results.append(result_text)
+
+    if not results:
+        return "No results found."
+
+    # Combine results with a references section
+    output = "\n---\n".join(results)
+    output += "\n\n" + "="*60 + "\n"
+    output += "**🔗 REFERENCES (Include these in your final output):**\n"
+    output += "\n".join(source_urls)
+    output += "\n" + "="*60 + "\n"
+
+    return output
 
 
 # Todo tools
@@ -126,31 +162,66 @@ def write_todos(
 
 import glob
 
-def validate_path(path_str: str) -> Path:
-    """Validate that a path is within the allowed workspace."""
+def validate_path(path_str: str, write_mode: bool = False) -> Path:
+    """Validate that a path is accessible.
+
+    Args:
+        path_str: Path to validate
+        write_mode: If True, restricts to agent_workspace only. If False, allows read access to specific allowed directories.
+
+    Returns:
+        Validated absolute path
+
+    Allowed directories:
+        Read: agent_workspace/, src/rag/research_paper_results_reports/, src/rag/files_to_embed/, src/scripts_for_agent/
+        Write: agent_workspace/ (only)
+    """
     try:
-        # Handle absolute paths that might be inside the workspace
+        # Handle absolute paths
         path = Path(path_str)
         if path.is_absolute():
-             # If absolute, check if it starts with ALLOWED_WORK_DIR
-             try:
-                 path = path.relative_to(ALLOWED_WORK_DIR)
-             except ValueError:
-                 # If not relative to workspace, try resolving it strictly
-                 pass
-        
+            # If absolute, try to make it relative to workspace
+            try:
+                path = path.relative_to(ALLOWED_WORK_DIR)
+            except ValueError:
+                # Not in workspace, will be resolved from ALLOWED_WORK_DIR
+                pass
+
         # Resolve full path (handling .. etc)
         full_path = (ALLOWED_WORK_DIR / path).resolve()
-        
-        # Check security (must be inside allowed dir)
-        # Exception: allow reading project root md2pdf.py
-        if full_path == PROJECT_ROOT / "md2pdf.py":
+
+        # Security check: Must be inside PROJECT_ROOT (no escaping to parent directories)
+        try:
+            full_path.relative_to(PROJECT_ROOT)
+        except ValueError:
+            raise ValueError(f"Access denied: Path {path_str} is outside project root")
+
+        # Write operations: Restricted to agent_workspace only
+        if write_mode:
+            if not str(full_path).startswith(str(ALLOWED_WORK_DIR)):
+                raise ValueError(f"Write access denied: Can only write to agent_workspace/. Path: {path_str}")
             return full_path
-            
-        if not str(full_path).startswith(str(ALLOWED_WORK_DIR)):
-            raise ValueError(f"Access denied: Path {path_str} is outside workspace")
-            
-        return full_path
+
+        # Read operations: Whitelist specific directories only
+        allowed_read_dirs = [
+            ALLOWED_WORK_DIR,  # agent_workspace/
+            PROJECT_ROOT / "src" / "rag" / "research_paper_results_reports",
+            PROJECT_ROOT / "src" / "rag" / "files_to_embed",
+            PROJECT_ROOT / "src" / "scripts_for_agent",
+        ]
+
+        # Check if path is within any allowed directory
+        for allowed_dir in allowed_read_dirs:
+            if str(full_path).startswith(str(allowed_dir)):
+                return full_path
+
+        # Path is not in any allowed directory
+        raise ValueError(
+            f"Access denied: Path {path_str} is not in allowed directories. "
+            f"Allowed: agent_workspace/, src/rag/research_paper_results_reports/, "
+            f"src/rag/files_to_embed/, src/scripts_for_agent/"
+        )
+
     except Exception as e:
         raise ValueError(f"Invalid path {path_str}: {str(e)}")
 
@@ -205,16 +276,17 @@ def write_file(path: str, content: str) -> str:
     """Create new files or completely overwrite existing ones.
 
     IMPORTANT: This overwrites the entire file. Use edit_file for partial edits.
+    Write access is restricted to agent_workspace/ only for safety.
 
     Args:
-        path: Path to the file to write
+        path: Path to the file to write (must be in agent_workspace/)
         content: The full content to write to the file
 
     Returns:
         Success message
     """
     try:
-        target_path = validate_path(path)
+        target_path = validate_path(path, write_mode=True)  # Enforce write restrictions
         # Ensure parent exists
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_text(content, encoding="utf-8")
@@ -228,9 +300,10 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
 
     Replaces the FIRST occurrence of `old_text` with `new_text`.
     Be specific with `old_text` to ensure you match the correct section.
+    Write access is restricted to agent_workspace/ only for safety.
 
     Args:
-        path: Path to the file to edit
+        path: Path to the file to edit (must be in agent_workspace/)
         old_text: The exact text segment to replace
         new_text: The new text to insert in its place
 
@@ -238,14 +311,14 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
         Success message or error if old_text not found
     """
     try:
-        target_path = validate_path(path)
+        target_path = validate_path(path, write_mode=True)  # Enforce write restrictions
         if not target_path.exists():
             return f"Error: File {path} does not exist"
-        
+
         content = target_path.read_text(encoding="utf-8")
         if old_text not in content:
             return f"Error: old_text not found in {path}. Please check exact spelling and whitespace."
-            
+
         # Replace only the first occurrence to be safe
         new_content = content.replace(old_text, new_text, 1)
         target_path.write_text(new_content, encoding="utf-8")
@@ -254,25 +327,27 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
         return f"Error editing file: {str(e)}"
 
 @tool(parse_docstring=True)
-def file_search(pattern: str) -> str:
+def file_search(pattern: str, path: str = ".") -> str:
     """Find files matching a pattern (glob).
 
     Args:
-        pattern: Glob pattern (e.g., "*.py", "src/**/*.ts")
+        pattern: Glob pattern (e.g., "*.py", "**/*.md")
+        path: Directory to search in (default: current directory)
+              Can use relative paths like '../src/rag/research_paper_results_reports/'
 
     Returns:
         List of matching file paths
     """
     try:
-        # Glob is complex to sandbox perfectly with relative paths, 
-        # so we list everything in workspace and filter.
-        # But efficiently: we chdir to workspace first.
+        # Validate and resolve the search path
+        search_path = validate_path(path)
+
         original_cwd = os.getcwd()
-        os.chdir(ALLOWED_WORK_DIR)
+        os.chdir(search_path)
         try:
             matches = glob.glob(pattern, recursive=True)
             if not matches:
-                return "No files found matching pattern."
+                return f"No files found matching pattern '{pattern}' in {search_path}"
             return "\n".join(matches)
         finally:
             os.chdir(original_cwd)
@@ -280,36 +355,42 @@ def file_search(pattern: str) -> str:
         return f"Error searching files: {str(e)}"
 
 @tool(parse_docstring=True)
-def file_content_search(pattern: str, file_pattern: str = "*") -> str:
+def file_content_search(pattern: str, file_pattern: str = "*", path: str = ".") -> str:
     """Search file contents for patterns/text (grep).
 
     Args:
         pattern: Text or regex pattern to search for
         file_pattern: Glob pattern for files to search in (default: *)
+        path: Directory to search in (default: current directory)
+              Can use relative paths like '../src/rag/research_paper_results_reports/'
 
     Returns:
         List of matches with line numbers
     """
     try:
+        # Validate and resolve the search path
+        search_path = validate_path(path)
+
         original_cwd = os.getcwd()
-        os.chdir(ALLOWED_WORK_DIR)
+        os.chdir(search_path)
         try:
             files = glob.glob(file_pattern, recursive=True)
             results = []
             for file_path in files:
-                path = Path(file_path)
-                if path.is_file():
+                path_obj = Path(file_path)
+                if path_obj.is_file():
                     try:
-                        lines = path.read_text(encoding="utf-8").splitlines()
+                        lines = path_obj.read_text(encoding="utf-8").splitlines()
                         for i, line in enumerate(lines, 1):
-                            if pattern in line:
+                            if pattern.lower() in line.lower():  # Case-insensitive search
+                                # Show relative path from search directory
                                 results.append(f"{file_path}:{i}: {line.strip()}")
                     except (UnicodeDecodeError, Exception):
                         pass # Skip binary or unreadable files
-            
+
             if not results:
-                return "No matches found."
-            return "\n".join(results[:100]) # Limit output
+                return f"No matches found for pattern '{pattern}' in {search_path}"
+            return "\n".join(results[:100]) # Limit output to first 100 matches
         finally:
             os.chdir(original_cwd)
     except Exception as e:
@@ -435,10 +516,9 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
     Args:
         tools: List of available tools that can be assigned to sub-agents
         subagents: List of specialized sub-agent configurations
-        model: The language model to use for main/default agents
+        model: The language model to use for all sub-agents (default)
         state_schema: The state schema (typically DeepAgentState)
-        researcher_model: Optional separate model for researcher agent
-        coding_model: Optional separate model for coding/coder agent
+        researcher_model: Optional separate model for internet_researcher agent (defaults to model if not provided)
 
     Returns:
         A 'task' tool that can delegate work to specialized sub-agents
@@ -466,10 +546,12 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
         if _agent["name"] == "internet_researcher" and researcher_model:
             agent_model = researcher_model
         else:
+            # All other subagents use the default model (subagent_model)
             agent_model = model
 
+        # Create sub-agent with parallel tool calls disabled
         agents[_agent["name"]] = create_react_agent(
-            agent_model,
+            agent_model.bind(parallel_tool_calls=False),
             prompt=_agent["prompt"],
             tools=_tools,
             state_schema=state_schema,
@@ -494,30 +576,73 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
         """
         # Validate requested agent type exists
         if subagent_type not in agents:
-            return f"Error: invoked agent of type {subagent_type}, the only allowed types are {[f'`{k}`' for k in agents]}"
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            f"Error: invoked agent of type {subagent_type}, the only allowed types are {[f'`{k}`' for k in agents]}",
+                            tool_call_id=tool_call_id
+                        )
+                    ]
+                }
+            )
 
-        # Get the requested sub-agent
-        sub_agent = agents[subagent_type]
+        try:
+            # Get the requested sub-agent
+            sub_agent = agents[subagent_type]
 
-        # Create isolated context with only the task description
-        # This is the key to context isolation - no parent history
-        state["messages"] = [{"role": "user", "content": description}]
+            # Create isolated context with only the task description
+            # This is the key to context isolation - no parent history
+            state["messages"] = [{"role": "user", "content": description}]
 
-        # Execute the sub-agent in isolation (async)
-        result = await sub_agent.ainvoke(state, config={"recursion_limit": 20000})
+            # Execute the sub-agent in isolation (async)
+            result = await sub_agent.ainvoke(state, config={"recursion_limit": 20000})
 
-        # Return results to parent agent via Command state update
-        return Command(
-            update={
-                "files": result.get("files", {}),  # Merge any file changes
-                "messages": [
-                    # Sub-agent result becomes a ToolMessage in parent context
-                    ToolMessage(
-                        result["messages"][-1].content, tool_call_id=tool_call_id
-                    )
-                ],
-            }
-        )
+            # Extract the final message from sub-agent
+            if not result.get("messages"):
+                raise ValueError("Sub-agent returned no messages")
+            
+            final_message = result["messages"][-1]
+            
+            # Get content from the final message
+            if hasattr(final_message, "content"):
+                content = final_message.content
+            elif isinstance(final_message, dict):
+                content = final_message.get("content", "")
+            else:
+                content = str(final_message)
+            
+            if not content:
+                content = f"Sub-agent {subagent_type} completed but returned empty response"
+
+            # Return results to parent agent via Command state update
+            return Command(
+                update={
+                    "files": result.get("files", {}),  # Merge any file changes
+                    "messages": [
+                        # Sub-agent result becomes a ToolMessage in parent context
+                        ToolMessage(
+                            content, 
+                            tool_call_id=tool_call_id
+                        )
+                    ],
+                }
+            )
+        
+        except Exception as e:
+            # If sub-agent fails, return error as ToolMessage to maintain valid chat history
+            import traceback
+            error_msg = f"Error executing {subagent_type} sub-agent: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            error_msg,
+                            tool_call_id=tool_call_id
+                        )
+                    ]
+                }
+            )
 
     return task
 
@@ -535,10 +660,16 @@ SUB_AGENTS: List[SubAgent] = [
         tools=["web_search", "think_strategically"],
     ),
     SubAgent(
-        name="file_manager",
-        description="File operations specialist - reads, writes, updates, and manages .md research files using bash commands",
-        prompt=prompts.FILE_MANAGER_PROMPT,
-        tools=["list_directory", "read_file", "write_file", "edit_file", "file_search", "file_content_search", "execute_bash"],
+        name="filesystem_reader",
+        description="File system reader - reads existing files, lists directories, searches content. Use for gathering context from existing documents.",
+        prompt=prompts.FILESYSTEM_READER_PROMPT,
+        tools=["list_directory", "read_file", "file_search", "file_content_search"],
+    ),
+    SubAgent(
+        name="script_executor",
+        description="Script execution specialist - runs Python scripts from src/scripts_for_agent/, converts markdown to PDF, and executes bash commands in agent_workspace/",
+        prompt=prompts.SCRIPT_EXECUTOR_PROMPT,
+        tools=["execute_bash", "list_directory", "read_file"],
     ),
     SubAgent(
         name="biomedical_researcher",
@@ -560,8 +691,8 @@ def create_task_delegation_tool(
     This is the public API for creating a task delegation tool for the research agent.
     
     Args:
-        model: The language model to use for sub-agents (default/fallback)
-        researcher_model: Optional separate model for internet_researcher agent
+        model: The language model to use for all sub-agents (default)
+        researcher_model: Optional separate model for internet_researcher agent (defaults to model if not provided)
         subagents: Optional list of SubAgent configurations. If not provided, uses SUB_AGENTS
         tools: Optional list of tools available to sub-agents. If not provided, uses ALL_TOOLS
 
@@ -569,10 +700,10 @@ def create_task_delegation_tool(
         The task delegation tool configured with the specified sub-agents
         
     Example:
-        # Use default sub-agents (internet_researcher, file_manager)
+        # Use default sub-agents with same model for all
         task_tool = create_task_delegation_tool(model)
         
-        # Use custom sub-agents with different models
+        # Use custom sub-agents with different model for researcher
         custom_agents = [
             {
                 "name": "researcher",
@@ -582,7 +713,7 @@ def create_task_delegation_tool(
             }
         ]
         task_tool = create_task_delegation_tool(
-            model=main_llm,
+            model=subagent_llm,
             researcher_model=researcher_llm,
             subagents=custom_agents,
             tools=all_tools
@@ -612,12 +743,15 @@ def create_task_delegation_tool(
 #
 # ============================================================================
 
-# Main Agent Tools (Orchestration ONLY)
-# The main agent ONLY plans and delegates - it doesn't do the work itself
+# Main Agent Tools (Orchestration + Writing)
+# The main agent plans, delegates context-gathering, and writes outputs directly
 MAIN_AGENT_TOOLS: List[Callable[..., Any]] = [
     read_todos,
     write_todos,
     think_strategically,
+    # Write tools - main agent handles all writing/editing directly
+    write_file,
+    edit_file,
     # task tool will be added dynamically when created
 ]
 
