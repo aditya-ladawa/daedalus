@@ -424,6 +424,37 @@ def think_strategically(reflection: str) -> str:
 
 
 @tool(parse_docstring=True)
+def load_skill(skill_name: str) -> str:
+    """Load an agent skill framework for advanced research capabilities.
+    
+    Agent skills provide structured metacognitive frameworks for:
+    - gap_analysis: Identifying missing evidence, contradictions, unexplored areas
+    - insight_generation: Synthesizing connections, generating hypotheses
+    - research_progression: Tracking investigation across sessions
+    
+    Args:
+        skill_name: Name of skill to load (gap_analysis, insight_generation, research_progression)
+    
+    Returns:
+        Full skill content with framework, structured questions, templates, and examples
+    """
+    from pathlib import Path
+    
+    # Get path to agent_skills directory
+    skills_dir = Path(__file__).parent.parent.parent / "agent_skills"
+    skill_path = skills_dir / f"{skill_name}.md"
+    
+    if not skill_path.exists():
+        available = ["gap_analysis", "insight_generation", "research_progression"]
+        return f"Skill '{skill_name}' not found. Available skills: {', '.join(available)}"
+    
+    try:
+        return skill_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"Error loading skill '{skill_name}': {str(e)}"
+
+
+@tool(parse_docstring=True)
 def execute_bash(
     command: str,
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -596,7 +627,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
             state["messages"] = [{"role": "user", "content": description}]
 
             # Execute the sub-agent in isolation (async)
-            result = await sub_agent.ainvoke(state, config={"recursion_limit": 20000})
+            result = await sub_agent.ainvoke(state, config={"recursion_limit": 100})
 
             # Extract the final message from sub-agent
             if not result.get("messages"):
@@ -612,17 +643,29 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
             else:
                 content = str(final_message)
             
-            if not content:
+            # ====== FIX: ENSURE CONTENT IS ALWAYS A STRING ======
+            # Convert content to string if it's not already
+            if not isinstance(content, str):
+                import json
+                try:
+                    # Try to serialize as JSON for structured data
+                    content = json.dumps(content, indent=2, ensure_ascii=False)
+                except (TypeError, ValueError):
+                    # Fall back to string conversion
+                    content = str(content)
+            
+            # Ensure we have non-empty content
+            if not content or not content.strip():
                 content = f"Sub-agent {subagent_type} completed but returned empty response"
+            # =====================================================
 
             # Return results to parent agent via Command state update
             return Command(
                 update={
-                    "files": result.get("files", {}),  # Merge any file changes
                     "messages": [
                         # Sub-agent result becomes a ToolMessage in parent context
                         ToolMessage(
-                            content, 
+                            content,  # Now guaranteed to be a string
                             tool_call_id=tool_call_id
                         )
                     ],
@@ -646,7 +689,6 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
 
     return task
 
-
 # ============================================================================
 # SUB-AGENT CONFIGURATIONS
 # ============================================================================
@@ -667,13 +709,13 @@ SUB_AGENTS: List[SubAgent] = [
     ),
     SubAgent(
         name="script_executor",
-        description="Script execution specialist - runs Python scripts from src/scripts_for_agent/, converts markdown to PDF, and executes bash commands in agent_workspace/",
+        description="Script execution specialist - runs Python scripts from src/scripts_for_agent/, converts markdown to PDF, executes bash commands, and creates data visualizations",
         prompt=prompts.SCRIPT_EXECUTOR_PROMPT,
-        tools=["execute_bash", "list_directory", "read_file"],
+        tools=["execute_bash", "list_directory", "read_file", "write_file", "file_search"],
     ),
     SubAgent(
         name="biomedical_researcher",
-        description="Biomedical research specialist - queries knowledge base of sleep disorders, psychiatric conditions, and Mendelian randomization studies",
+        description="Research knowledge base specialist - queries knowledge graph built from research papers using multiple search modes (global, local, hybrid, naive)",
         prompt=prompts.BIOMEDICAL_RESEARCHER_PROMPT,
         tools=["search_research_papers"],
     ),
@@ -749,6 +791,7 @@ MAIN_AGENT_TOOLS: List[Callable[..., Any]] = [
     read_todos,
     write_todos,
     think_strategically,
+    load_skill,  # Direct access to agent skills
     # Write tools - main agent handles all writing/editing directly
     write_file,
     edit_file,

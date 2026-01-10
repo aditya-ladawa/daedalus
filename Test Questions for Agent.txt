@@ -1,0 +1,145 @@
+🎯 Test Questions for Agent Skills
+1. Gap Analysis Skill Test
+Question:
+
+"Write a comprehensive review of the relationship between sleep quality and cognitive performance in adults. After gathering initial research, use gap analysis to identify what's missing from the current literature."
+
+What this tests:
+
+Agent loads gap_analysis skill
+Applies 5 dimensions (Completeness, Perspective, Consistency, Depth, Utility)
+Identifies missing evidence types, unexplored angles, contradictions
+Documents gaps in Limitations section
+Expected behavior:
+
+1. Gather research from RAG + internet
+2. load_skill("gap_analysis")
+3. think_strategically with gap analysis framework:
+   - "COMPLETENESS: Have quantitative studies, missing qualitative interviews"
+   - "PERSPECTIVE: Only examined young adults, missing elderly population"
+   - "CONSISTENCY: Study A shows positive effect, Study B shows null - why?"
+4. Update todos to fill identified gaps
+5. Document unfillable gaps in Limitations
+2. Insight Generation Skill Test
+Question:
+
+"Research the impact of remote work on employee productivity across different industries. Generate novel insights and actionable hypotheses from the findings."
+
+What this tests:
+
+Pattern recognition across multiple sources
+Novel cross-domain connections
+Hypothesis generation
+Translational insights
+Expected behavior:
+
+1. Gather research from multiple industries
+2. load_skill("insight_generation")
+3. think_strategically with insight generation:
+   - "PATTERN: Productivity increased in tech, decreased in finance - why?"
+   - "NOVEL CONNECTION: Finance requires collaboration, tech is individual work"
+   - "HYPOTHESIS: Collaborative industries need hybrid models"
+   - "ACTIONABLE: Test hypothesis with pilot hybrid programs"
+4. Write Discussion section with synthesized insights
+3. Research Progression Skill Test
+Multi-session question - Session 1:
+
+"Start a research project on the effectiveness of mindfulness meditation for anxiety reduction. Create a research log and knowledge base."
+
+Session 2 (continuation):
+
+"Continue the mindfulness meditation research from the previous session. Build on what was already investigated."
+
+What this tests:
+
+Session initialization and handoff
+Knowledge accumulation tracking
+Avoiding redundant research
+Progressive depth strategy
+Expected behavior:
+
+Session 1:
+
+1. load_skill("research_progression")
+2. Create project directory: mindfulness_anxiety_research/
+3. write_file("mindfulness_anxiety_research/research_log.md")
+4. write_file("mindfulness_anxiety_research/knowledge_base.md")
+5. Document Session 1 findings
+6. Create handoff with "Next Steps"
+Session 2:
+
+1. load_skill("research_progression")
+2. task(filesystem_reader, "Read mindfulness_anxiety_research/research_log.md")
+3. think_strategically: "Session 1 covered efficacy, next: mechanisms"
+4. Avoid re-researching what Session 1 already covered
+5. Update research_log with Session 2 progress
+4. Combined Skills Test (Advanced)
+Question:
+
+"Conduct a comprehensive research project on the genetic and environmental factors contributing to Alzheimer's disease. This is a multi-session project - use research progression to track your work, gap analysis to ensure completeness, and insight generation to synthesize novel findings."
+
+What this tests:
+
+All three skills working together
+Complex multi-session workflow
+Systematic research methodology
+Expected behavior:
+
+Session 1 - Foundation:
+1. load_skill("research_progression") → Set up project structure
+2. Gather broad research
+3. load_skill("gap_analysis") → Identify what's missing
+4. Document Session 1 in research_log
+Session 2 - Deep Dive:
+1. load_skill("research_progression") → Resume from Session 1
+2. Fill gaps identified in Session 1
+3. load_skill("insight_generation") → Synthesize connections
+4. Generate hypotheses
+Session 3 - Synthesis:
+1. load_skill("research_progression") → Review all prior work
+2. load_skill("gap_analysis") → Final gap check
+3. load_skill("insight_generation") → Write Discussion with insights
+4. Document limitations and future directions
+5. Quick Skill Application Test
+Question:
+
+"I've gathered research on climate change impacts on agriculture. Apply gap analysis to identify what's missing, then generate insights about adaptation strategies."
+
+What this tests:
+
+Quick skill loading and application
+Using skills mid-research (not just at start)
+Combining multiple skills in single session
+📝 How to Evaluate Success
+Gap Analysis Success Criteria:
+✓ Agent loads skill with 
+load_skill("gap_analysis")
+✓ Applies 5 dimensions systematically
+✓ Creates explicit gap list with Impact/Feasibility ratings
+✓ Updates todos to address fillable gaps
+✓ Documents unfillable gaps in Limitations section
+Insight Generation Success Criteria:
+✓ Agent loads skill with 
+load_skill("insight_generation")
+✓ Identifies patterns across sources
+✓ Makes novel cross-domain connections
+✓ Generates testable hypotheses
+✓ Provides actionable next steps
+Research Progression Success Criteria:
+✓ Agent loads skill with 
+load_skill("research_progression")
+✓ Creates research_log.md and knowledge_base.md
+✓ In Session 2, reads prior session logs
+✓ Avoids redundant research
+✓ Builds cumulatively on previous work
+✓ Provides clear session handoff
+🚀 Recommended Testing Order
+Start simple: Test gap_analysis with Question 1
+Test synthesis: Try insight_generation with Question 2
+Test continuity: Run research_progression with Question 3 (two sessions)
+Go complex: Try combined skills with Question 4
+This will validate that your skills implementation works correctly and that the agent can effectively use the 
+load_skill
+ tool!
+
+

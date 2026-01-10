@@ -109,7 +109,10 @@ Remember: You are a research assistant. Be thorough, accurate, and evidence-base
         tools=[search_research_papers],
         prompt=system_prompt
     )
-    
+
+    # Set high default recursion limit for long research queries
+    graph = graph.with_config({"recursion_limit": 50000})
+
     print("✅ LightRAG Agent ready!")
     return graph
 

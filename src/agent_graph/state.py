@@ -49,11 +49,11 @@ class InputState(TypedDict):
 
 class DeepAgentState(AgentState):
     """Agent state with scratchpad (todos) for complex workflow tracking.
-    
+
     Extends AgentState which provides:
     - messages: List of conversation messages
     - remaining_steps: Managed field for recursion control
-    
+
     Adds:
     - todos: Optional task tracking for complex workflows
     - files: Optional file storage for context management
@@ -61,9 +61,6 @@ class DeepAgentState(AgentState):
 
     todos: NotRequired[list[Todo]]
     """Optional todo list for tracking multi-step tasks and progress."""
-
-    files: NotRequired[dict[str, str]]
-    """Optional file storage for context management and code generation."""
 
 
 # Keep the old State name for backward compatibility

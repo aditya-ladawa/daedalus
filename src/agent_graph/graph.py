@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 from langgraph.prebuilt import create_react_agent
 from langgraph.runtime import Runtime
+from langchain_core.runnables import RunnableConfig
 
 from agent_graph.context import Context
 from agent_graph.state import DeepAgentState, InputState
@@ -45,6 +46,14 @@ def _build_agent_graph():
     
     # Load default models (will be overridden at runtime via Runtime[Context])
     main_model = load_chat_model(ctx.model)
+    
+    # Configure thinking level for gemini-2.0-flash-thinking-exp
+    if "gemini-3-flash-preview" in ctx.model:
+        main_model = main_model.bind(thinking_level="minimal")
+    
+    # Set max output tokens for comprehensive research papers
+    main_model = main_model.bind(max_tokens=16384, temperature=0.3)
+    
     subagent_model = load_chat_model(ctx.subagent_model)
     
     # Create task delegation tool
@@ -79,7 +88,10 @@ def _build_agent_graph():
         state_schema=DeepAgentState,
         prompt=prompts.SYSTEM_PROMPT
     )
-    
+
+    # Make the graph configurable with a high default recursion limit
+    graph = graph.with_config({"recursion_limit": 50000})
+
     print("✅ Deep Research Agent ready!")
     return graph
 

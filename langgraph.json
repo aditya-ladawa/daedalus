@@ -6,8 +6,5 @@
     "lightrag_agent": "./src/agent_graph/lightrag_agent.py:graph"
   },
   "env": ".env",
-  "python_version": "3.12",
-  "config": {
-      "recursion_limit": 50000
-  }
+  "python_version": "3.12"
 }
