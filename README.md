@@ -1,101 +1,84 @@
-# Deep Research Agent (Daedalus)
+# Daedalus: Deep Research Agent with Context Engineering
 
-This project implements an advanced **Deep Research Agent** using LangGraph, designed for the LangGraph Studio UI.
+**Building a biomedical research agent that doesn't lose its mind during long tasks.**
+
+## The Problem: Context Drift
+
+Current AI agents (ReAct, multi-agent teams) suffer from **context drift**—they forget important details, lose focus, and hallucinate as tasks get longer. This is particularly problematic for:
+
+- Processing dozens of research papers
+- Maintaining citation coherence across long documents
+- Synthesizing findings from multiple sources
+- Writing comprehensive research reports section-by-section
+
+## Our Solution: Context Engineering
+
+A deep agent using LangGraph that implements **four context engineering techniques**:
+
+1. **WRITE**: Section-by-section report generation with reflection loops and external memory (todo tracking)
+2. **SELECT**: Multi-modal information retrieval via RAG sub-agent, web search, or direct file reading
+3. **COMPRESS**: Context management at 80% capacity through iterative writing and strategic reflection
+4. **ISOLATE**: Heavy tasks delegated to sub-agents with fresh context to prevent pollution
+
+Plus **LightRAG** (hybrid/local/global/naive graph modes) for structured biomedical knowledge retrieval, and **Tavily + Wikipedia** for real-time web search.
 
 ## Architecture
 
-It uses a **Hierarchical ReAct Agent** architecture:
-
-1.  **Main Orchestrator**: Strategizes, plans, and delegates (Does NOT do the work).
-2.  **Internet Researcher**: Specialist sub-agent for deep, multi-query academic research.
-3.  **File Manager**: Specialist sub-agent for safe file operations (Read, Write, Edit, LS).
-
-**Key Features:**
-
-- **Strict Sequential Execution**: To ensure file system integrity.
-- **High Recursion Limit**: Configured for 20,000 steps for long-running research.
-- **Bayesian Plan Evolution**: Adapts research plans based on findings.
-
-## What it does
-
-The ReAct agent:
-
-1. Takes a user **query** as input
-2. Reasons about the query and decides on an action
-3. Executes the chosen action using available tools
-4. Observes the result of the action
-5. Repeats steps 2-4 until it can provide a final answer
-
-By default, it's set up with a basic set of tools, but can be easily extended with custom tools to suit various use cases.
-
-## Getting Started
-
-Assuming you have already [installed LangGraph Studio](https://github.com/langchain-ai/langgraph-studio?tab=readme-ov-file#download), to set up:
-
-1. Create a `.env` file.
-
-```bash
-cp .env.example .env
-```
-
-2. Define required API keys in your `.env` file.
-
-The primary [search tool](./src/agent_graph/tools.py) [^1] used is [Tavily](https://tavily.com/). Create an API key [here](https://app.tavily.com/sign-in).
-
-### Setup Model
-
-The defaults values for `model` are shown below:
-
-```yaml
-model: claude-sonnet-4-5-20250929
-```
-
-Follow the instructions below to get set up, or pick one of the additional options.
-
-#### Anthropic
-
-To use Anthropic's chat models:
-
-1. Sign up for an [Anthropic API key](https://console.anthropic.com/) if you haven't already.
-2. Once you have your API key, add it to your `.env` file:
+### Hierarchical ReAct Agent Pattern
 
 ```
-ANTHROPIC_API_KEY=your-api-key
+Main Orchestrator (DeepSeek/Gemini)
+├── Strategizes and plans (read_todos, write_todos, think_strategically)
+├── Writes outputs directly (write_file, edit_file)
+└── Delegates to Sub-Agents (context isolation):
+    ├── internet_researcher: Web search specialist (Tavily)
+    ├── biomedical_researcher: RAG knowledge base (LightRAG + Qdrant + Neo4j)
+    ├── filesystem_reader: Read-only file operations
+    └── script_executor: Python/Bash execution, data visualization
 ```
 
-#### OpenAI
+### Key Features
 
-To use OpenAI's chat models:
+- **Scratchpad-Driven Execution**: External todo list as persistent memory across context resets
+- **Context Isolation**: Sub-agents receive only task descriptions, no parent conversation history
+- **LightRAG Integration**: Graph-based retrieval with 4 query modes (hybrid/local/global/naive)
+- **PhD-Level Quality Standards**: Embedded in system prompts (citation coherence, quantitative rigor)
+- **Agent Skills**: Progressive disclosure metacognitive frameworks (gap analysis, insight generation)
+- **High Recursion Limit**: 50,000 steps for long-running research tasks
 
-1. Sign up for an [OpenAI API key](https://platform.openai.com/signup).
-2. Once you have your API key, add it to your `.env` file:
+## What This Proves
+
+Context engineering techniques (write, select, compress, isolate) improve **accuracy and coherence** in long-horizon biomedical research tasks compared to standard RAG and basic agents.
+
+## Project Structure
 
 ```
-OPENAI_API_KEY=your-api-key
+react-agent/
+├── src/agent_graph/          # Core agent implementation
+│   ├── graph.py              # Main graph builder (create_react_agent)
+│   ├── state.py              # DeepAgentState with todo tracking
+│   ├── tools.py              # 23+ tools including task delegation
+│   ├── prompts.py            # 658 lines of system prompts
+│   └── lightrag_agent.py     # Standalone LightRAG agent
+├── src/rag/                  # LightRAG integration
+│   ├── config.py             # Cloud (Qdrant+Neo4j) or Local storage
+│   ├── query.py              # Query modes with citation support
+│   └── rag_search_tool.py    # LangChain tool wrapper
+├── agent_skills/             # Metacognitive frameworks
+│   ├── gap_analysis.md       # 5-dimensional gap identification
+│   ├── insight_generation.md # Hypothesis synthesis
+│   └── research_progression.md # Session continuity tracking
+└── agent_workspace/          # Sandboxed output directory
 ```
 
-3. Customize whatever you'd like in the code.
-4. Open the folder LangGraph Studio!
+## Technical Innovations
 
-## How to customize
+- **Task delegation tool** with context isolation via `Command` state updates
+- **LightRAG knowledge graph** with entity/relationship search over biomedical papers
+- **Bayesian plan evolution**: Todos adapt based on findings (confirm, evolve, prune, deepen)
+- **Citation coherence workflow**: Single References section, numbered citations, complete URLs
+- **Data visualization integration**: Matplotlib plots with publication-quality standards
 
-1. **Add new tools**: Extend the agent's capabilities by adding new tools in [tools.py](./src/agent_graph/tools.py). These can be any Python functions that perform specific tasks.
-2. **Select a different model**: We default to Anthropic's Claude 3 Sonnet. You can select a compatible chat model using `provider/model-name` via runtime context. Example: `openai/gpt-4-turbo-preview`.
-3. **Customize the prompt**: We provide a default system prompt in [prompts.py](./src/agent_graph/prompts.py). You can easily update this via context in the studio.
+---
 
-You can also quickly extend this template by:
-
-- Modifying the agent's reasoning process in [graph.py](./src/agent_graph/graph.py).
-- Adjusting the ReAct loop or adding additional steps to the agent's decision-making process.
-
-## Development
-
-While iterating on your graph, you can edit past state and rerun your app from past states to debug specific nodes. Local changes will be automatically applied via hot reload. Try adding an interrupt before the agent calls tools, updating the default system message in `src/agent_graph/context.py` to take on a persona, or adding additional nodes and edges!
-
-Follow up requests will be appended to the same thread. You can create an entirely new thread, clearing previous history, using the `+` button in the top right.
-
-You can find the latest (under construction) docs on [LangGraph](https://github.com/langchain-ai/langgraph) here, including examples and other references. Using those guides can help you pick the right patterns to adapt here for your use case.
-
-LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) for more in-depth tracing and collaboration with teammates.
-
-[^1]: https://python.langchain.com/docs/concepts/#tools
+_For complete technical documentation, see [project_architecture_documentation.md](./project_architecture_documentation.md)_
