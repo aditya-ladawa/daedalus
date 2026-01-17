@@ -188,3 +188,5 @@ src/rag/files_to_embed_*/
 src/rag/time_it/
 
 src/rag/research_paper_results_reports
+
+src/benchmarking_stuff/deepeval_benchmark/results

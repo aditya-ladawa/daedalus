@@ -27,6 +27,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from rag.rag_search_tool import search_research_papers
 
+# Import DeepEval tracing (no-op if not enabled)
+from agent_graph.tracing import observe, update_span
+
 load_dotenv()
 
 # Initialize Tavily client
@@ -41,6 +44,7 @@ ALLOWED_WORK_DIR.mkdir(exist_ok=True)
 
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="web_search")
 def web_search(query: str) -> str:
     """Search the web for current information on any topic.
 
@@ -102,6 +106,7 @@ def web_search(query: str) -> str:
 
 
 @tool
+@observe(type="tool", name="read_todos")
 def read_todos(
     state: Annotated[DeepAgentState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -128,6 +133,7 @@ def read_todos(
 
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="write_todos")
 def write_todos(
     todos: list[Todo], tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
@@ -226,6 +232,7 @@ def validate_path(path_str: str, write_mode: bool = False) -> Path:
         raise ValueError(f"Invalid path {path_str}: {str(e)}")
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="list_directory")
 def list_directory(path: str = ".") -> str:
     """List contents of a directory (ls).
 
@@ -251,6 +258,7 @@ def list_directory(path: str = ".") -> str:
         return f"Error listing directory: {str(e)}"
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="read_file")
 def read_file(path: str) -> str:
     """Read complete contents of a file.
 
@@ -272,6 +280,7 @@ def read_file(path: str) -> str:
         return f"Error reading file: {str(e)}"
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="write_file")
 def write_file(path: str, content: str) -> str:
     """Create new files or completely overwrite existing ones.
 
@@ -295,6 +304,7 @@ def write_file(path: str, content: str) -> str:
         return f"Error writing file: {str(e)}"
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="edit_file")
 def edit_file(path: str, old_text: str, new_text: str) -> str:
     """Edit specific sections of files without full replacement.
 
@@ -327,6 +337,7 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
         return f"Error editing file: {str(e)}"
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="file_search")
 def file_search(pattern: str, path: str = ".") -> str:
     """Find files matching a pattern (glob).
 
@@ -355,6 +366,7 @@ def file_search(pattern: str, path: str = ".") -> str:
         return f"Error searching files: {str(e)}"
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="file_content_search")
 def file_content_search(pattern: str, file_pattern: str = "*", path: str = ".") -> str:
     """Search file contents for patterns/text (grep).
 
@@ -398,6 +410,7 @@ def file_content_search(pattern: str, file_pattern: str = "*", path: str = ".") 
 
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="think_strategically")
 def think_strategically(reflection: str) -> str:
     """Tool for deep strategic thinking, analysis, and planning.
 
@@ -455,6 +468,7 @@ def load_skill(skill_name: str) -> str:
 
 
 @tool(parse_docstring=True)
+@observe(type="tool", name="execute_bash")
 def execute_bash(
     command: str,
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -594,6 +608,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
     ]
 
     @tool(description=prompts.TASK_DESCRIPTION_PREFIX.format(other_agents=other_agents_string))
+    @observe(type="tool", name="task_delegation")
     async def task(
         description: str,
         subagent_type: str,

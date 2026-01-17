@@ -21,6 +21,19 @@ from lightrag import LightRAG, QueryParam
 
 from .config import get_rag_instance, print_config
 
+# Import DeepEval tracing (no-op if not enabled)
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from agent_graph.tracing import observe
+except ImportError:
+    # Fallback if tracing module not available
+    def observe(type=None, name=None, metrics=None):
+        def decorator(func):
+            return func
+        return decorator
+
 # Global RAG instance cache
 _rag_cache: Optional[LightRAG] = None
 
@@ -64,6 +77,7 @@ class SearchInput(BaseModel):
 
 
 @tool(args_schema=SearchInput)
+@observe(type="tool", name="search_research_papers")
 async def search_research_papers(query: str, mode: str = "hybrid") -> str:
     """Search the biomedical research knowledge base built from research papers.
 
