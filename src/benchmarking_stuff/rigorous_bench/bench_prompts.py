@@ -92,15 +92,23 @@ REPORT FORMAT
 - Implications with concrete examples
 
 ## References
-1. [Source Title](https://full-url.com) - Brief description
-2. [Another Source](https://example.org) - Context
+[1] Source Title - https://full-url.com/path
+[2] Another Source - https://example.org/page
+
+**CRITICAL**: Use this EXACT format with bare URLs (not markdown links in References)
 
 ---
-CITATION RULES
+CITATION RULES (MANDATORY)
 ---
-- EVERY factual claim needs [N] citation
+- EVERY factual claim needs [N] inline citation
 - Multiple citations: "[1, 3, 5]"
-- References MUST include full URLs
+- References section MUST use format: `[N] Title - https://complete-url`
+- ALWAYS include full URLs starting with https://
+- Prefer authoritative sources:
+  * For RFCs: https://www.rfc-editor.org/rfc/rfcXXXX or https://datatracker.ietf.org/doc/rfcXXXX
+  * For standards: Official .org or .gov sites
+  * For legal cases: Official court websites
+- Extract URLs from web_search results and include them verbatim
 
 ---
 YOUR TOOLS

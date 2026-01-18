@@ -126,10 +126,24 @@ async def run_query(
 3. Write a detailed markdown report with:
    - Clear structure (Introduction, Main sections, Conclusion)
    - Inline citations [1], [2], etc.
-   - A References section at the end with full URLs
+   - A References section at the end with FULL URLs in markdown format
 4. Use write_report to save your final report
 
-Be thorough, cite your sources, and provide specific details."""
+**CRITICAL CITATION REQUIREMENTS:**
+- Every factual claim MUST have an inline citation [1], [2], etc.
+- The References section MUST use this exact format:
+  [1] Source Title - https://full-url-here.com/path
+  [2] Another Source - https://another-url.com/page
+- ALWAYS include the complete URL (starting with https://)
+- Prefer authoritative sources (.org, .gov, official documentation sites)
+- If citing RFCs, use official RFC Editor or IETF Datatracker URLs
+
+Example References section:
+## References
+[1] RFC 9000: QUIC Transport Protocol - https://www.rfc-editor.org/rfc/rfc9000
+[2] IETF QUIC Working Group - https://datatracker.ietf.org/wg/quic/
+
+Be thorough, cite your sources with full URLs, and provide specific details."""
     
     # Run the agent with streaming
     try:
