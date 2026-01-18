@@ -159,20 +159,61 @@ def calculate_metrics(report: str, query_data: dict, eval_result: dict) -> dict:
     # Semantic Drift Ratio (SDR) - higher is better
     sdr = fak_total / max(fak_total + fdk_total, 1)
     
-    # URL matching
+    # URL matching with equivalent domain mapping
     report_urls = extract_citations(report)
     trusted_urls = query_data.get("tsl", [])
     
-    # Normalize URLs for comparison
+    # Map of equivalent authoritative domains
+    EQUIVALENT_DOMAINS = {
+        # RFC sources
+        "rfc-editor.org": ["datatracker.ietf.org", "ietf.org"],
+        "datatracker.ietf.org": ["rfc-editor.org", "ietf.org"],
+        # Add more as needed
+    }
+    
     def normalize_url(url):
+        """Normalize URL for comparison"""
         url = url.lower().rstrip("/")
         url = re.sub(r'^https?://(www\.)?', '', url)
         return url
     
+    def extract_domain_and_path(url):
+        """Extract domain and path from normalized URL"""
+        parts = url.split("/", 1)
+        domain = parts[0]
+        path = "/" + parts[1] if len(parts) > 1 else ""
+        return domain, path
+    
+    def urls_match(trusted_url, report_url):
+        """Check if two URLs match, considering equivalent domains"""
+        t_domain, t_path = extract_domain_and_path(trusted_url)
+        r_domain, r_path = extract_domain_and_path(report_url)
+        
+        # Direct substring match (original logic)
+        if trusted_url in report_url:
+            return True
+        
+        # Check if domains are equivalent
+        equivalent_domains = EQUIVALENT_DOMAINS.get(t_domain, [t_domain])
+        if r_domain in equivalent_domains or t_domain == r_domain:
+            # For RFC documents, match by document identifier
+            if "rfc" in t_path.lower() or "draft-ietf" in t_path.lower():
+                # Extract RFC/draft number
+                rfc_match_t = re.search(r'(rfc\d+|draft-ietf-[\w-]+)', t_path.lower())
+                rfc_match_r = re.search(r'(rfc\d+|draft-ietf-[\w-]+)', r_path.lower())
+                if rfc_match_t and rfc_match_r:
+                    return rfc_match_t.group(1) == rfc_match_r.group(1)
+            # For other paths, check if one contains the other
+            if t_path and r_path and (t_path in r_path or r_path in t_path):
+                return True
+        
+        return False
+    
     report_normalized = [normalize_url(u) for u in report_urls]
     trusted_normalized = [normalize_url(u) for u in trusted_urls]
     
-    matches = sum(1 for u in trusted_normalized if any(u in r for r in report_normalized))
+    matches = sum(1 for trusted in trusted_normalized 
+                  if any(urls_match(trusted, report) for report in report_normalized))
     tbo = matches / max(len(trusted_normalized), 1)  # Trust Boost
     
     # Quality score from judge
@@ -323,6 +364,19 @@ async def run_evaluation(
     if results:
         avg_its = sum(r["metrics"]["ITS"] for r in results) / len(results)
         print(f"\nAverage ITS: {avg_its:.2%}")
+        
+        # Save results for comparison
+        results_file = BENCH_DIR / "deep_agent_results.json"
+        # Convert for JSON serialization
+        json_results = []
+        for r in results:
+            json_results.append({
+                "query_id": r["uid"],
+                "metrics": r["metrics"],
+                "eval": r["eval_result"],
+            })
+        results_file.write_text(json.dumps(json_results, indent=2))
+        print(f"\n✓ Results saved to: {results_file}")
     
     return results
 

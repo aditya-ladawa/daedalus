@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-
+from langchain.chat_models import init_chat_model
 # Add paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "agent_graph"))
 from state import DeepAgentState
@@ -44,13 +44,14 @@ async def build_agent_graph(
         Compiled LangGraph agent
     """
     # Main agent: DeepSeek for orchestration
-    main_model = ChatOpenAI(
-        model=main_model_name,
-        base_url="https://api.deepseek.com/v1",
-        api_key=os.environ.get("DEEPSEEK_API_KEY"),
-        temperature=0.3,
-        max_tokens=16384,
-    )
+    # main_model = ChatOpenAI(
+    #     model=main_model_name,
+    #     base_url="https://api.deepseek.com/v1",
+    #     api_key=os.environ.get("DEEPSEEK_API_KEY"),
+    #     temperature=0.3,
+    #     max_tokens=16384,
+    # )
+    main_model = init_chat_model(model='gemini-3-flash-preview', model_provider='google_genai')
     
     # Subagent model: Gemini 2.5 Flash
     subagent_model = ChatGoogleGenerativeAI(

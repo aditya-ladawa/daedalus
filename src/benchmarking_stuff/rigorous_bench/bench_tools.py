@@ -388,19 +388,82 @@ def think_strategically(reflection: str) -> str:
 
 
 # =============================================================================
-# MCP TOOLS LOADER (Tavily MCP)
+# WEB SEARCH TOOL (Direct Tavily - No MCP)
 # =============================================================================
 
-from internet_search_mcp import get_mcp_tools
+from tavily import TavilyClient
+from langchain_core.tools import tool
+import os
+
+# Initialize Tavily client
+tavily_client = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
 
 
-async def load_mcp_research_tools():
-    """Load Tavily MCP tools asynchronously.
+@tool(parse_docstring=True)
+def web_search(query: str) -> str:
+    """Search the web for current information on any topic.
+
+    This tool uses Tavily AI search optimized for research. It returns comprehensive
+    results including titles, content snippets, URLs, and relevance scores.
+
+    Args:
+        query: The search query to look up.
+
+    Returns:
+        Search results with detailed information and source URLs for citation.
+    """
+    # Tavily search with basic mode to reduce API costs
+    response = tavily_client.search(
+        query,
+        max_results=9,  # Reduced for cost savings
+        search_depth="basic",  # Use basic mode to reduce API consumption
+        include_answer=False,  # We want raw results, not LLM-generated answers
+        include_raw_content=False,  # Don't need full HTML (too verbose)
+        include_domains=[],  # Allow all domains
+        exclude_domains=[]  # No exclusions
+    )
+
+    # Format results with enhanced information
+    results = []
+    source_urls = []
+
+    for idx, result in enumerate(response.get("results", []), 1):
+        title = result.get('title', 'No title')
+        url = result.get('url', '')
+        content = result.get('content', 'No content available')
+        score = result.get('score', 0)
+
+        # Track URLs for references section
+        source_urls.append(f"- [{title}]({url})")
+
+        # Format individual result
+        result_text = f"**Result {idx}: {title}**\n"
+        result_text += f"Relevance Score: {score:.3f}\n"
+        result_text += f"{content}\n"
+        result_text += f"Source: {url}\n"
+
+        results.append(result_text)
+
+    if not results:
+        return "No results found."
+
+    # Combine results with a references section
+    output = "\n---\n".join(results)
+    output += "\n\n" + "="*60 + "\n"
+    output += "**🔗 REFERENCES (Include these in your final output):**\n"
+    output += "\n".join(source_urls)
+    output += "\n" + "="*60 + "\n"
+
+    return output
+
+
+def load_mcp_research_tools():
+    """Load web search tool (non-async, no MCP overhead).
     
     Returns:
-        List of LangChain-compatible MCP tools
+        List containing the web_search tool
     """
-    return await get_mcp_tools()
+    return [web_search]
 
 
 # =============================================================================
@@ -467,8 +530,8 @@ SUB_AGENTS: List[SubAgent] = [
 async def create_task_tool_async(model, state_schema):
     """Create task delegation tool with MCP tools loaded asynchronously."""
     
-    # Load MCP tools for internet researcher
-    mcp_tools = await load_mcp_research_tools()
+    # Load web search tool for internet researcher (now synchronous)
+    mcp_tools = load_mcp_research_tools()
     
     # Combine with think_strategically for researcher
     researcher_tools = mcp_tools + [think_strategically]

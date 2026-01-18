@@ -192,3 +192,4 @@ src/rag/research_paper_results_reports
 src/benchmarking_stuff/deepeval_benchmark/results
 
 src/benchmarking_stuff/rigorous_bench/all_reports
+src/benchmarking_stuff/rigorous_bench/basic_agent_reports
