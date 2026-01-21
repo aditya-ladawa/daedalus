@@ -6,12 +6,17 @@ Results are saved separately from the deep agent for comparison.
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from basic_agent import run_query as run_basic_query
-from run_evaluation import (
+# Add path for config
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from agents.config import BASIC_AGENT_MODEL, JUDGE_MODEL
+
+from agents.basic_agent import run_query as run_basic_query
+from evaluate_deep_agent import (
     load_benchmark_queries,
     load_report,
     evaluate_with_judge,
@@ -24,13 +29,13 @@ load_dotenv()
 # Paths
 BENCH_DIR = Path(__file__).parent
 BENCHMARK_FILE = BENCH_DIR / "RigorousBench.jsonl"
-REPORTS_DIR = BENCH_DIR / "basic_agent_reports"
+REPORTS_DIR = BENCH_DIR.parent / "eval_reports" / "rigorous_bench" / "basic_agent"
 
 
 async def run_evaluation(
     query_ids: list[str],
-    agent_model: str = "deepseek-chat",
-    judge_model: str = "gemini-3-pro-preview",
+    agent_model: str = BASIC_AGENT_MODEL,
+    judge_model: str = JUDGE_MODEL,
 ):
     """Run evaluation pipeline for basic agent.
     

@@ -1,0 +1,43 @@
+[
+  {
+    "content": "Research QUIC standardization timeline and key milestones (IETF meetings, draft versions, RFC publication)",
+    "status": "completed"
+  },
+  {
+    "content": "Identify and compare major draft versions (draft-17, draft-23, draft-27, draft-32, etc.) with specific technical changes",
+    "status": "completed"
+  },
+  {
+    "content": "Research RFC 9000 (QUIC transport) publication details and compare with final drafts",
+    "status": "completed"
+  },
+  {
+    "content": "Research RFC 9001 (QUIC TLS) and RFC 9002 (QUIC recovery) - substantive changes between versions",
+    "status": "completed"
+  },
+  {
+    "content": "Research QUIC working group formation, key contributors, and standardization process",
+    "status": "completed"
+  },
+  {
+    "content": "Write Introduction section with background and scope",
+    "status": "completed"
+  },
+  {
+    "content": "Write Standardization Timeline section with specific dates and milestones",
+    "status": "completed"
+  },
+  {
+    "content": "Write Draft Version Comparison section with technical details",
+    "status": "completed"
+  },
+  {
+    "content": "Write RFC Publication Analysis section comparing drafts to final RFCs",
+    "status": "completed"
+  },
+  {
+    "content": "Write Conclusion summarizing key findings",
+    "status": "completed"
+  },
+  { "content": "Compile References with full URLs", "status": "in_progress" }
+]

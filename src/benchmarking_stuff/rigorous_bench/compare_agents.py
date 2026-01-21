@@ -26,7 +26,7 @@ async def run_comparison(query_ids: list[str] = None):
     
     # Import evaluation functions
     from evaluate_basic_agent import run_evaluation as run_basic
-    from run_evaluation import run_evaluation as run_deep
+    from evaluate_deep_agent import run_evaluation as run_deep
     
     print("\n" + "=" * 80)
     print("📊 RUNNING BASIC REACT AGENT")
@@ -171,5 +171,13 @@ def generate_comparison_report(basic_results: list, deep_results: list) -> str:
 
 
 if __name__ == "__main__":
-    # Run comparison on default queries
-    asyncio.run(run_comparison())
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Run Agent Comparison")
+    parser.add_argument("--queries", type=str, default="07001,05002,09003", help="Comma-separated query IDs")
+    args = parser.parse_args()
+    
+    query_ids = [q.strip() for q in args.queries.split(",")]
+    
+    # Run comparison on specified queries
+    asyncio.run(run_comparison(query_ids))

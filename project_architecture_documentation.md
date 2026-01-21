@@ -33,20 +33,58 @@ A deep agent using LangGraph that:
 ```
 react-agent/
 ├── src/
-│   ├── agent_graph/           # Core agent implementation
-│   │   ├── graph.py           # Main graph builder (create_react_agent)
+│   ├── agent_graph/           # Core agent implementation (Production)
+│   │   ├── graph.py           # Main graph builder (Anthropic 5-phase workflow)
 │   │   ├── state.py           # State definitions (DeepAgentState, Todo)
 │   │   ├── tools.py           # 23+ tools including task delegation
-│   │   ├── prompts.py         # 650+ lines of system prompts
+│   │   ├── prompts.py         # 950+ lines of system prompts
 │   │   ├── context.py         # Runtime configuration (models, params)
 │   │   ├── lightrag_agent.py  # Standalone LightRAG agent
 │   │   └── utils.py           # Model loading utilities
 │   │
-│   └── rag/                   # LightRAG integration
-│       ├── config.py          # Storage config (Cloud: Qdrant+Neo4j / Local)
-│       ├── ingest.py          # Document ingestion with deduplication
-│       ├── query.py           # Query modes (hybrid/local/global/naive)
-│       └── rag_search_tool.py # LangChain tool wrapper
+│   ├── rag/                   # LightRAG integration
+│   │   ├── config.py          # Storage config (Cloud: Qdrant+Neo4j / Local)
+│   │   ├── ingest.py          # Document ingestion with deduplication
+│   │   ├── query.py           # Query modes (hybrid/local/global/naive)
+│   │   └── rag_search_tool.py # LangChain tool wrapper
+│   │
+│   └── benchmarking_stuff/    # Evaluation infrastructure
+│       ├── agents/            # Benchmark-specific agent implementations
+│       │   ├── deep_agent.py  # Hierarchical agent (for benchmarks)
+│       │   ├── basic_agent.py # ReAct baseline agent
+│       │   ├── prompts_deep_agent.py   # Anthropic 5-phase prompts
+│       │   ├── prompts_basic_agent.py  # Basic ReAct prompts
+│       │   ├── tools.py       # Shared benchmark tools
+│       │   └── config.py      # Model configurations
+│       │
+│       ├── eval_reports/      # 🆕 CENTRALIZED REPORT STORAGE
+│       │   ├── deep_research_bench/   # PhD-level research benchmark
+│       │   │   ├── deep_agent/{query_id}/report.md
+│       │   │   └── basic_agent/{query_id}/report.md
+│       │   └── rigorous_bench/        # Custom evaluation benchmark
+│       │       ├── deep_agent/{query_id}/report.md
+│       │       └── basic_agent/{query_id}/report.md
+│       │
+│       ├── deep_research_bench/       # Deep Research Bench (100 PhD queries)
+│       │   ├── run_agent.py           # Agent execution script
+│       │   ├── run_benchmark.sh       # RACE + FACT evaluation
+│       │   ├── deepresearch_bench_race.py  # Quality evaluation
+│       │   └── data/prompt_data/query.jsonl
+│       │
+│       ├── rigorous_bench/            # RigorousBench (custom queries)
+│       │   ├── evaluate_deep_agent.py
+│       │   ├── evaluate_basic_agent.py
+│       │   ├── compare_agents.py
+│       │   └── RigorousBench.jsonl
+│       │
+│       ├── deepeval_benchmark/        # DeepEval (RAG unit testing)
+│       │   ├── evaluate_agent.py
+│       │   ├── custom_metrics.py
+│       │   └── config.py
+│       │
+│       └── lightrag_ragas/            # Ragas (RAG component eval)
+│           ├── evaluate_ragas.py
+│           └── dataset_one.json
 │
 ├── agent_skills/              # Progressive disclosure metacognitive frameworks
 │   ├── gap_analysis.md        # Gap identification framework
@@ -461,7 +499,7 @@ class Context:
 **Model Capabilities:**
 
 - Main Agent: 16,384 max tokens, temperature 0.3
-- Parallel tool calls disabled for state integrity
+- **Parallel tool calls enabled** for Anthropic-style parallel research (multiple subagents can execute simultaneously)
 - Recursion limit: 50,000 steps
 
 ### 9.2 LangGraph Studio Integration
@@ -526,7 +564,7 @@ sequenceDiagram
 | **Sub-agents with isolated context** | Prevents context pollution from long conversations |
 | **Main agent writes directly**       | Maintains control over final output quality        |
 | **Todo-based tracking**              | External memory survives context resets            |
-| **Sequential tool execution**        | Ensures state consistency                          |
+| **Parallel subagent execution**      | Enables simultaneous research across multiple angles (Anthropic pattern) |
 
 ### Why LightRAG?
 
@@ -548,7 +586,237 @@ sequenceDiagram
 
 ---
 
-## 12. Thesis Contribution Summary
+## 12. Benchmarking Architectures
+
+### 12.1 Overview
+
+The project includes **four distinct benchmarking frameworks** to evaluate agent performance across different dimensions:
+
+| Benchmark               | Focus                      | Metrics                                              | Agent Architectures     |
+| ----------------------- | -------------------------- | ---------------------------------------------------- | ----------------------- |
+| **Deep Research Bench** | PhD-level research quality | RACE (Quality), FACT (Citations)                     | Deep Agent, Basic Agent |
+| **RigorousBench**       | Custom domain evaluation   | QUA, SDR, TBO, ITS                                   | Deep Agent, Basic Agent |
+| **DeepEval**            | RAG unit testing           | Faithfulness, Relevancy, Contextual Precision/Recall | Production Agent        |
+| **Ragas**               | RAG component quality      | Generation + Retrieval metrics                       | LightRAG modes          |
+
+### 12.2 Deep Agent Architecture (Anthropic 5-Phase Workflow)
+
+**Used in**: Deep Research Bench, RigorousBench
+
+The Deep Agent implements the **Anthropic-style iterative research pattern** with parallel subagent spawning:
+
+```mermaid
+graph TB
+    Start([User Query]) --> P1[PHASE 1: PLAN & RECONNAISSANCE]
+
+    subgraph P1[" "]
+        P1A[think_strategically:<br/>Assess complexity]
+        P1B[Parallel Reconnaissance:<br/>task biomedical_researcher<br/>task internet_researcher]
+        P1C[Evaluate: RAG relevant?<br/>Internet sufficient?]
+        P1D[write_todos:<br/>Create 5-12 specific tasks]
+        P1A --> P1B --> P1C --> P1D
+    end
+
+    P1 --> P2[PHASE 2: PARALLEL RESEARCH]
+
+    subgraph P2[" "]
+        P2A[read_todos:<br/>Identify ready tasks]
+        P2B{Strategy?}
+        P2C[Breadth: 1 subagent per todo<br/>task internet_researcher todo_X<br/>task internet_researcher todo_Y<br/>task biomedical_researcher todo_Z]
+        P2D[Depth: Multiple subagents per todo<br/>task internet_researcher stats<br/>task internet_researcher papers<br/>task biomedical_researcher RAG]
+        P2E[PARALLEL EXECUTION<br/>All subagents run simultaneously]
+        P2A --> P2B
+        P2B -->|Independent todos| P2C --> P2E
+        P2B -->|Complex todo| P2D --> P2E
+    end
+
+    P2 --> P3[PHASE 3: SYNTHESIZE & EVALUATE]
+
+    subgraph P3[" "]
+        P3A[Receive all subagent results]
+        P3B[think_strategically:<br/>What did I learn?<br/>What gaps remain?<br/>Is info specific enough?<br/>Need more sources?]
+        P3C[write_todos:<br/>Mark completed ✅<br/>Add new tasks if gaps<br/>Refine queries]
+        P3A --> P3B --> P3C
+    end
+
+    P3 --> P4{PHASE 4: DECISION}
+    P4 -->|Gaps remain| P2
+    P4 -->|Sufficient| P5[PHASE 5: PROGRESSIVE WRITING]
+
+    subgraph P5[" "]
+        P5A[write_file:<br/>Create skeleton with placeholders]
+        P5B[For each placeholder:<br/>- Verify data sufficiency<br/>- Write 500-1000 words<br/>- edit_file to replace placeholder<br/>- read_file to verify]
+        P5C[grep_file: Check for [INSERT]<br/>think_strategically: Complete?<br/>Remove remaining placeholders]
+        P5A --> P5B --> P5C
+    end
+
+    P5 --> P6[PHASE 6: DELIVER]
+    P6 --> End([Complete Report])
+
+    style P1 fill:#e1f5ff
+    style P2 fill:#fff4e1
+    style P3 fill:#e8f5e9
+    style P4 fill:#fce4ec
+    style P5 fill:#f3e5f5
+    style P6 fill:#e0f2f1
+```
+
+**Key Features:**
+
+- ✅ **Parallel tool calls enabled**: Spawns multiple subagents simultaneously
+- ✅ **Todo-driven workflow**: External memory via `read_todos`/`write_todos`
+- ✅ **Synthesis loops**: Mandatory reflection after each research batch
+- ✅ **Progressive writing**: Skeleton + Fill pattern to avoid context limits
+- ✅ **Subagents**: internet_researcher, biomedical_researcher, script_executor, filesystem_reader
+
+**Prompt Location**: `src/benchmarking_stuff/agents/prompts_deep_agent.py`
+
+### 12.3 Basic Agent Architecture (ReAct Baseline)
+
+**Used in**: Deep Research Bench, RigorousBench
+
+The Basic Agent is a **simple ReAct loop** without hierarchical orchestration:
+
+```mermaid
+graph TB
+    Start([User Query]) --> Think1[Think: Assess query]
+    Think1 --> Act1{Action}
+
+    Act1 -->|Research| WS[web_search]
+    Act1 -->|Write| WR[write_report]
+    Act1 -->|Edit| ER[edit_report]
+    Act1 -->|Read| RR[read_report_lines]
+
+    WS --> Obs1[Observation]
+    WR --> Obs1
+    ER --> Obs1
+    RR --> Obs1
+
+    Obs1 --> Think2[Think: What did I learn?]
+    Think2 --> Decision{Complete?}
+
+    Decision -->|No| Act1
+    Decision -->|Yes| Final[Final Answer]
+    Final --> End([Report])
+
+    style Think1 fill:#e1f5ff
+    style Act1 fill:#fff4e1
+    style Obs1 fill:#e8f5e9
+    style Think2 fill:#f3e5f5
+    style Decision fill:#fce4ec
+```
+
+**Key Features:**
+
+- ❌ **No subagents**: Direct tool access only
+- ❌ **No parallel execution**: Sequential tool calls
+- ✅ **Simple loop**: Think → Act → Observe → Repeat
+- ✅ **Tools**: web_search, write_report, edit_report, read_report_lines
+- ⚠️ **Limitation**: Prone to "lazy" behavior on long tasks (stops early)
+
+**Prompt Location**: `src/benchmarking_stuff/agents/prompts_basic_agent.py`
+
+### 12.4 Benchmark Metrics Explained
+
+#### Deep Research Bench (PhD-Level Research)
+
+**RACE (Quality Evaluation)**:
+
+- **Comprehensiveness** (0-1): Coverage breadth and depth
+- **Insight** (0-1): Quality of analysis and synthesis
+- **Instruction Following** (0-1): Adherence to specific requirements
+- **Readability** (0-1): Clarity and structure
+- **Overall Score**: Weighted average
+
+**FACT (Citation Evaluation)**:
+
+- **Citation Accuracy** (%): Percentage of citations where URL supports the claim
+- **Effective Citations** (count): Number of verified, supported citations
+
+**Evaluation Method**: LLM-as-judge (Gemini 2.5 Pro for RACE, Gemini 2.5 Flash for FACT)
+
+#### RigorousBench (Custom Domain Evaluation)
+
+**Metrics**:
+
+- **QUA (Quality)**: LLM judge score based on task-specific rubrics (QSR)
+- **SDR (Semantic Drift Ratio)**: Ratio of focus keywords (FAK) vs deviation keywords (FDK)
+- **TBO (Trust Boost)**: % of citations matching trusted source list (TSL)
+- **ITS (Integrated Total Score)**: `0.5*QUA + 0.3*SDR + 0.2*TBO`
+
+**Evaluation Method**: Hybrid (LLM judge + keyword analysis + URL matching)
+
+#### DeepEval (RAG Unit Testing)
+
+**Core Metrics**:
+
+- **Answer Relevancy**: Does answer match query?
+- **Hallucination**: Does answer conflict with context?
+
+**Action Metrics** (requires tool trace):
+
+- **Task Completion**: Was goal achieved?
+- **Tool Correctness**: Were tools used properly?
+- **Argument Correctness**: Were tool inputs correct?
+- **Step Efficiency**: Ratio of useful steps
+
+**RAG Metrics** (requires retrieved context):
+
+- **Faithfulness**: Is answer grounded in context?
+- **Contextual Relevancy**: Is retrieved info relevant?
+
+**Evaluation Method**: DeepEval library with Gemini as judge
+
+#### Ragas (RAG Component Quality)
+
+**Generation Metrics**:
+
+- **Faithfulness**: Grounding in context
+- **Answer Relevancy**: Relevance to query
+- **Answer Correctness**: Accuracy vs ground truth
+- **Answer Similarity**: Semantic similarity to ground truth
+
+**Retrieval Metrics**:
+
+- **Context Recall**: Is correct answer in retrieved context?
+- **Context Precision**: Is relevant info ranked high?
+
+**Evaluation Method**: Ragas library with Gemini 2.5 Flash
+
+### 12.5 Report Storage Structure
+
+All evaluation reports are centralized in `src/benchmarking_stuff/eval_reports/`:
+
+```
+eval_reports/
+├── deep_research_bench/
+│   ├── deep_agent/
+│   │   └── {query_id}/
+│   │       └── report.md
+│   └── basic_agent/
+│       └── {query_id}/
+│           └── report.md
+└── rigorous_bench/
+    ├── deep_agent/
+    │   └── {query_id}/
+    │       ├── report.md
+    │       └── evaluation.md
+    └── basic_agent/
+        └── {query_id}/
+            ├── report.md
+            └── evaluation.md
+```
+
+**Benefits**:
+
+- Single location for all benchmark outputs
+- Clear separation by benchmark type and agent type
+- Easy comparison between agents on same query
+- Evaluation metadata stored alongside reports
+
+---
+
+## 13. Thesis Contribution Summary
 
 This project demonstrates that **context engineering techniques** (write, select, compress, isolate) improve accuracy and coherence in long-horizon biomedical research tasks compared to standard RAG and basic agents.
 
@@ -568,7 +836,7 @@ This project demonstrates that **context engineering techniques** (write, select
 
 ---
 
-## 13. File Reference Summary
+## 14. File Reference Summary
 
 | File                                                                                                            | Lines | Purpose                                      |
 | --------------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------- |
