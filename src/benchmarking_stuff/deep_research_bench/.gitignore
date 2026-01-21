@@ -158,7 +158,7 @@ logs/
 
 # Results and output files (optional - you may want to include some sample results)
 # Uncomment the lines below if you don't want to track any results
-# results/
+results/
 output.log
 
 # Large model files
