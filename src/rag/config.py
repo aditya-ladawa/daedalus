@@ -41,20 +41,20 @@ WORKSPACE = "default"
 # =============================================================================
 
 # Backend: "gemini" or "qwen" (via OpenRouter)
-LLM_BACKEND = "gemini"
+LLM_BACKEND = "qwen"  # Changed to use OpenRouter/Kimi to match main agent
 
-# Gemini
+# Gemini (still used for embeddings)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-2.5-flash"  # Using stable version
-# QWEN/OpenRouter
+# OpenRouter (Kimi model to match main agent)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-QWEN_MODEL = "qwen/qwen3-vl-32b-instruct"
+QWEN_MODEL = "moonshotai/kimi-k2.5"  # Updated to match main agent model
 
 # Model selection
 LLM_MODEL = QWEN_MODEL if LLM_BACKEND == "qwen" else GEMINI_MODEL
 
-# Embedding (always Gemini)
+# Embedding (Gemini)
 EMBEDDING_MODEL = "gemini-embedding-001"
 EMBEDDING_DIM = 1536
 

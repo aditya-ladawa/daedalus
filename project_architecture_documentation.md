@@ -36,7 +36,7 @@ react-agent/
 │   ├── agent_graph/           # Core agent implementation (Production)
 │   │   ├── graph.py           # Main graph builder (Anthropic 5-phase workflow)
 │   │   ├── state.py           # State definitions (DeepAgentState, Todo)
-│   │   ├── tools.py           # 23+ tools including task delegation
+│   │   ├── tools.py           # 14 tools including task delegation
 │   │   ├── prompts.py         # 950+ lines of system prompts
 │   │   ├── context.py         # Runtime configuration (models, params)
 │   │   ├── lightrag_agent.py  # Standalone LightRAG agent
@@ -115,10 +115,10 @@ graph TB
     end
 
     subgraph "Sub-Agents (Context Isolation)"
-        Task --> IR[internet_researcher<br/>Web Search Specialist]
+        Task --> IR[internet_researcher<br/>think_strategically<br/>Web Search Specialist]
         Task --> FR[filesystem_reader<br/>File Operations]
         Task --> SE[script_executor<br/>Python/Bash Scripts]
-        Task --> BR[biomedical_researcher<br/>RAG Knowledge Base]
+        Task --> BR[biomedical_researcher<br/>think_strategically<br/>RAG Knowledge Base]
     end
 
     subgraph "External Systems"
@@ -157,11 +157,13 @@ The agent maintains an external todo list as persistent memory:
 
 ```
 The Loop:
-1. read_todos → Identify next task
-2. EXECUTE → Do the task (research, write, etc.)
-3. think_strategically → Reflect on what you learned
-4. write_todos → Update plan
-5. LOOP → Return to step 1
+1. Think and plan
+2. write_todos → Update plan
+3. EXECUTE → Do the task (research, write, etc.)
+4. think_strategically → Reflect on what you learned
+5. write_todos → Update plan
+6. read_todos → Identify next task
+7. LOOP → Return to step 1
 ```
 
 **Implementation:**
@@ -375,7 +377,7 @@ async def search_research_papers(query: str, mode: str = "hybrid") -> str:
 
 ## 6. System Prompts Architecture
 
-### 6.1 Prompt Structure (658 lines)
+### 6.1 Prompt Structure
 
 The system prompt is structured into these sections:
 
@@ -519,7 +521,7 @@ class Context:
 
 ## 10. Execution Flow Example
 
-### Research Paper Generation Workflow
+### Research Paper Generation Workflow (Anthropic 5-Phase Pattern)
 
 ```mermaid
 sequenceDiagram
@@ -527,31 +529,75 @@ sequenceDiagram
     participant M as Main Agent
     participant BR as biomedical_researcher
     participant IR as internet_researcher
-    participant F as File System
 
     U->>M: "Write paper on insomnia and depression"
 
-    Note over M: RECONNAISSANCE
-    M->>BR: task("broad query on insomnia depression")
-    BR-->>M: RAG context with entities/relationships
-    M->>M: think_strategically: "RAG has relevant papers"
+    Note over M: PHASE 1: PLAN & RECONNAISSANCE
+    M->>M: think_strategically: Assess complexity
 
-    Note over M: PLANNING
-    M->>M: write_todos: [Intro, Methods, Results, Discussion]
-
-    loop For Each Section
-        M->>M: read_todos: Get current task
-        M->>BR: task("specific query for section")
-        BR-->>M: Detailed findings with citations
-        M->>IR: task("supplementary web search")
-        IR-->>M: Additional context with references
-        M->>F: write_file("project/report.md", section content)
-        M->>M: think_strategically: "Is this PhD quality?"
-        M->>M: write_todos: Mark complete, identify gaps
+    par Parallel Reconnaissance
+        M->>BR: task("broad query on insomnia depression")
+        M->>IR: task("test internet for recent studies")
+    and
+        BR-->>M: RAG context with entities/relationships
+        IR-->>M: Recent web findings
     end
 
-    M-->>U: Complete research paper
+    M->>M: think_strategically: "RAG has papers, web has stats"
+    M->>M: write_todos: [Intro, Methods, Results, Discussion, Conclusion]
+
+    Note over M: PHASE 2: PARALLEL RESEARCH (Loop)
+    loop Until Sufficient Data
+        M->>M: read_todos: Get next incomplete tasks
+
+        par Parallel Subagent Execution
+            M->>BR: task("specific query for Introduction")
+            M->>BR: task("specific query for Methods")
+            M->>IR: task("statistics for Results")
+        and
+            BR-->>M: Detailed findings with citations
+            BR-->>M: Methodology papers
+            IR-->>M: Statistical data with sources
+        end
+
+        Note over M: PHASE 3: SYNTHESIZE & EVALUATE
+        M->>M: think_strategically: "What did I learn? Gaps?"
+        M->>M: write_todos: Mark complete ✅, add new if gaps
+
+        Note over M: PHASE 4: DECISION POINT
+        alt Gaps Remain
+            M->>M: Loop back to Phase 2
+        else Sufficient Data
+            M->>M: Proceed to Phase 5
+        end
+    end
+
+    Note over M: PHASE 5: PROGRESSIVE WRITING
+    M->>M: write_file("report.md", skeleton with placeholders)
+
+    loop For Each Section
+        M->>M: read_file: Check current state
+        M->>M: edit_file: Replace [PLACEHOLDER] with content
+        M->>M: think_strategically: "Is this PhD quality?"
+    end
+
+    M->>M: grep_file: Search for remaining [PLACEHOLDER]
+    M->>M: edit_file: Remove any remaining placeholders
+    M->>M: read_file: Final verification
+
+    Note over M: PHASE 6: DELIVER
+    M-->>U: Complete research paper with full content
+
+    Note over M: KEY: Main agent writes directly<br/>No delegation to filesystem_reader
 ```
+
+**Key Differences from Old Workflow:**
+
+1. **Parallel Research**: Multiple subagents execute simultaneously (Phase 2)
+2. **Iterative Loop**: Research → Synthesize → Decide → Repeat until sufficient
+3. **Main Agent Writes**: Uses `write_file`/`edit_file` directly, no delegation
+4. **Progressive Writing**: Skeleton + Fill pattern to avoid context limits
+5. **Strategic Thinking**: Mandatory reflection at key decision points
 
 ---
 
@@ -559,11 +605,11 @@ sequenceDiagram
 
 ### Why Hierarchical Architecture?
 
-| Design                               | Benefit                                            |
-| ------------------------------------ | -------------------------------------------------- |
-| **Sub-agents with isolated context** | Prevents context pollution from long conversations |
-| **Main agent writes directly**       | Maintains control over final output quality        |
-| **Todo-based tracking**              | External memory survives context resets            |
+| Design                               | Benefit                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| **Sub-agents with isolated context** | Prevents context pollution from long conversations                       |
+| **Main agent writes directly**       | Maintains control over final output quality                              |
+| **Todo-based tracking**              | External memory survives context resets                                  |
 | **Parallel subagent execution**      | Enables simultaneous research across multiple angles (Anthropic pattern) |
 
 ### Why LightRAG?
@@ -709,7 +755,7 @@ graph TB
 **Key Features:**
 
 - ❌ **No subagents**: Direct tool access only
-- ❌ **No parallel execution**: Sequential tool calls
+- ✅ **Parallel execution**: Parallel tool calls
 - ✅ **Simple loop**: Think → Act → Observe → Repeat
 - ✅ **Tools**: web_search, write_report, edit_report, read_report_lines
 - ⚠️ **Limitation**: Prone to "lazy" behavior on long tasks (stops early)
@@ -842,7 +888,7 @@ This project demonstrates that **context engineering techniques** (write, select
 | --------------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------- |
 | [graph.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/graph.py)             | 105   | Main graph builder with `create_react_agent` |
 | [state.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/state.py)             | 68    | State definitions (DeepAgentState, Todo)     |
-| [tools.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/tools.py)             | 840   | 23+ tools including task delegation          |
+| [tools.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/tools.py)             | 840   | 14 tools including task delegation          |
 | [prompts.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/prompts.py)         | 658   | System prompts for all agents                |
 | [context.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/agent_graph/context.py)         | 45    | Runtime configuration                        |
 | [config.py](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/src/rag/config.py)                   | 262   | LightRAG storage configuration               |
@@ -851,5 +897,3 @@ This project demonstrates that **context engineering techniques** (write, select
 | [gap_analysis.md](file:///home/aditya-ladawa/Aditya/RESEARCH_PROJECT/react-agent/agent_skills/gap_analysis.md)  | 315   | Metacognitive gap analysis framework         |
 
 ---
-
-_This documentation covers the complete implementation as of January 2026._

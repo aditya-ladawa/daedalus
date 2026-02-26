@@ -76,14 +76,23 @@ except ImportError as e:
     print("   Run: pip install ragas datasets")
     RAGAS_AVAILABLE = False
 
-# LangChain imports for Gemini
+# LangChain imports for Gemini (judge LLM)
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+    from langchain_google_genai import ChatGoogleGenerativeAI
     LANGCHAIN_GEMINI_AVAILABLE = True
 except ImportError:
     print("⚠️  langchain-google-genai not installed")
     print("   Run: pip install langchain-google-genai")
     LANGCHAIN_GEMINI_AVAILABLE = False
+
+# LangChain OpenAI imports for OpenRouter embeddings
+try:
+    from langchain_openai import OpenAIEmbeddings
+    LANGCHAIN_OPENAI_AVAILABLE = True
+except ImportError:
+    print("⚠️  langchain-openai not installed")
+    print("   Run: pip install langchain-openai")
+    LANGCHAIN_OPENAI_AVAILABLE = False
 
 
 # =============================================================================
@@ -97,11 +106,12 @@ CHUNK_TOP_K = 8     # Text chunks to retrieve
 # Query modes to evaluate
 QUERY_MODES = ["naive", "local", "global", "hybrid"]
 
-# Judge LLM for RAGAS (using your available models)
+# Judge LLM for RAGAS
 JUDGE_MODEL = "gemini-2.5-flash"  # Fast and cheap for evaluation
 
-# Embedding model for Answer Relevancy metric
-EMBEDDING_MODEL = "models/embedding-001"
+# Embedding model via OpenRouter (Qwen3 embedding series)
+# Options: qwen/qwen3-embedding-0.6b | qwen/qwen3-embedding-4b | qwen/qwen3-embedding-8b
+EMBEDDING_MODEL = "qwen/qwen3-embedding-4b"
 
 # Results directory
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -630,14 +640,17 @@ async def main():
         return
     
     # Check dependencies
-    if not RAGAS_AVAILABLE or not LANGCHAIN_GEMINI_AVAILABLE:
+    if not RAGAS_AVAILABLE or not LANGCHAIN_GEMINI_AVAILABLE or not LANGCHAIN_OPENAI_AVAILABLE:
         print("❌ Missing dependencies. Please install:")
-        print("   pip install ragas datasets langchain-google-genai")
+        print("   pip install ragas datasets langchain-google-genai langchain-openai")
         sys.exit(1)
     
-    # Check API key
+    # Check API keys
     if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
         print("❌ GEMINI_API_KEY or GOOGLE_API_KEY environment variable required")
+        sys.exit(1)
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        print("❌ OPENROUTER_API_KEY environment variable required for embeddings")
         sys.exit(1)
     
     print("=" * 70)
@@ -667,27 +680,29 @@ async def main():
     print("=" * 70)
     
     # Initialize Judge LLM for RAGAS
-    print("\n🤖 Initializing Judge LLM (Gemini)...")
+    print("\n🤖 Initializing Judge LLM (Gemini) + Embeddings (OpenRouter Qwen3)...")
     
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
     
     judge_llm = LangchainLLMWrapper(
         ChatGoogleGenerativeAI(
             model=JUDGE_MODEL,
-            google_api_key=api_key,
+            google_api_key=gemini_api_key,
             temperature=0
         )
     )
     
     embeddings = LangchainEmbeddingsWrapper(
-        GoogleGenerativeAIEmbeddings(
+        OpenAIEmbeddings(
             model=EMBEDDING_MODEL,
-            google_api_key=api_key
+            api_key=openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
         )
     )
     
-    print(f"  Judge Model: {JUDGE_MODEL}")
-    print(f"  Embedding Model: {EMBEDDING_MODEL}")
+    print(f"  Judge Model:     {JUDGE_MODEL} (Gemini)")
+    print(f"  Embedding Model: {EMBEDDING_MODEL} (OpenRouter)")
     
     # Initialize LightRAG
     print("\n🗄️  Initializing LightRAG...")

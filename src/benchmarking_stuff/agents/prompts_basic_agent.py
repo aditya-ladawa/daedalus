@@ -74,24 +74,101 @@ Match your research depth to query complexity:
 - **Deep Investigation (30+ searches)**: Comprehensive domain coverage → **5,000-8,000 words**
 
 ---
-PROGRESSIVE WRITING STRATEGY (MANDATORY)
+ITERATIVE WRITING PROCESS
 ---
-1. **ASSESS**: Check query complexity. For complex queries (>2000 words), DO NOT write all at once.
-2. **PLAN**: Create a Skeleton Report with `write_report` containing headers and placeholders:
-   ```markdown
-   # Title
-   ## Introduction
-   [INSERT_INTRO]
-   ## Section 1
-   [INSERT_SEC1]
-   ...
-   ```
-3. **LOOP**:
-   - Research specific details for ONE section.
-   - Write that section (~500-1000 words).
-   - Use `edit_report(old="[INSERT_SEC1]", new="...content...")` to fill it in.
-4. **VERIFY**: Check report length before finishing. If too short, add more details to sections.
-5. **FINALIZE**: Ensure all placeholders are removed.
+
+**WORKFLOW OVERVIEW**:
+1. Do initial reconnaissance (2-3 web searches to understand scope)
+2. START WRITING immediately with write_report() - create Title + Introduction
+3. For each subsequent section: Research → Write → Verify → Refine
+4. Continue until report is complete
+5. Final quality check
+
+**CRITICAL**: You MUST call write_report() to create the initial report file. Do NOT just research without writing.
+
+---
+
+For EACH section of your report, follow this cycle:
+
+**SECTION 1 (Introduction)**:
+1. **RESEARCH**: Gather specific data for introduction
+   - Use web_search("specific query for introduction")
+   - Collect 3-5 sources with concrete data
+
+2. **WRITE**: Create the report file with title and introduction
+   - write_report(query_id, "# [Title]\n\n## Introduction\n[500-1000 words with citations]\n\n## References\n[1] Source - URL")
+   - MUST include References section at the end (even if just placeholder initially)
+
+3. **VERIFY**: Check what you just wrote
+   - read_report_lines(query_id, 1, 50) to review
+   - Is it PhD-quality with specific details?
+
+**SUBSEQUENT SECTIONS**:
+1. **RESEARCH**: Gather data for next section
+   - web_search("specific query for this section")
+
+2. **WRITE**: Insert new section BEFORE References
+   - edit_report(query_id, "## References", "## New Section Title\n[500-1000 words with citations]\n\n## References")
+   - Always insert new sections BEFORE the References section
+
+3. **VERIFY**: Check the new section
+   - read_report_lines(query_id, start, end)
+
+4. **REFINE**: Improve if needed
+   - edit_report(query_id, old_text="weak sentence", new_text="improved with data [N]")
+
+5. **UPDATE REFERENCES**: Add new citations to References section
+   - edit_report(query_id, old_refs, new_refs_with_additions)
+
+6. **NEXT SECTION**: Repeat for next part of report
+
+**ANTI-PATTERNS TO AVOID**:
+- ❌ Researching without ever calling write_report()
+- ❌ Writing entire report in one write_report call
+- ❌ Moving to next section before current one is complete
+
+**SECTION-BY-SECTION APPROACH**:
+```
+Introduction → write_report() → Verify → Refine → Complete
+Section 2 → Research → edit_report() → Verify → Refine → Complete  
+Section 3 → Research → edit_report() → Verify → Refine → Complete
+...continue until all sections done...
+Conclusion → Research → edit_report() → Verify → Refine → Complete
+Final References → Compile all citations → Complete
+```
+
+---
+MANDATORY COMPLETION CRITERIA
+---
+
+Before finishing, verify your complete report:
+
+1. **READ FULL REPORT**: Use read_report_lines(query_id, 1, 999) to review everything
+
+2. **CHECK COMPLETENESS**:
+   ✅ All sections have substantial content (500+ words each)
+   ✅ NO placeholders like [INSERT_*], [PLACEHOLDER_*], [TODO_*]
+   ✅ NO empty sections (every ## has content below it)
+
+3. **VERIFY CITATIONS**:
+   ✅ Every factual claim has inline citation [N]
+   ✅ References section has 10+ citations with full URLs
+   ✅ All [N] numbers correspond to references
+
+4. **WORD COUNT**:
+   - Simple: 1,000-1,500 words minimum
+   - Moderate: 2,000-3,000 words minimum
+   - Complex: 3,000-5,000 words minimum  
+   - Deep: 5,000-8,000 words minimum
+
+5. **QUALITY STANDARDS**:
+   ✅ Specific data (exact numbers, dates, names)
+   ✅ Technical terminology (not generic descriptions)
+   ✅ Quantitative comparisons where applicable
+
+**IF ANY CHECK FAILS → FIX IMMEDIATELY BEFORE FINISHING**
+
+Only mark task complete after ALL quality checks pass.
 """
 
 __all__ = ["SYSTEM_PROMPT"]

@@ -1,0 +1,49 @@
+flowchart TD
+    DeepAgent([DeepAgent])
+    
+    RM["`**tool (report_manipulation)**
+    ---
+    **write_file:** tool to write reports
+    **edit_file:** tool to edit reports`"]
+    
+    PL["`**tools (planning)**
+    ---
+    **read_todos:** reads existing todos from agent state
+    **write_todos:** write new todos or updates existing todos
+    **think_strategically:** pauses to reflect and analyse findings`"]
+    
+    SA["`**tool (spawn subagents)**
+    ---
+    **create_task:** spawns sub-agent and assigns it a task`"]
+    
+    IR["`**internet_researcher**
+    ---
+    web_search,
+    think_strategically`"]
+    
+    FR["`**filesystem_reader**
+    ---
+    list_directory, read_file,
+    file_search,
+    file_content_search`"]
+    
+    SE["`**script_executor**
+    ---
+    execute_bash,
+    list_directory, read_file,
+    write_file, file_search`"]
+    
+    RR["`**rag_researcher**
+    ---
+    rag_tool`"]
+
+    DeepAgent --> RM
+    DeepAgent --> PL
+    DeepAgent --> SA
+    
+    SA --> IR
+    SA --> FR
+    SA --> SE
+    SA --> RR
+
+    classDef default fill:#fff,stroke:#333,stroke-width:1px,color:#000;

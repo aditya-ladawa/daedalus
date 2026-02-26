@@ -39,8 +39,11 @@ Main Orchestrator (DeepSeek/Gemini)
 
 ### Key Features
 
+- **Anthropic 5-Phase Iterative Research**: Plan → Parallel Research → Synthesize → Decide → Write loop
+- **Parallel Tool Execution**: Multiple subagents execute simultaneously during research phases
 - **Scratchpad-Driven Execution**: External todo list as persistent memory across context resets
 - **Context Isolation**: Sub-agents receive only task descriptions, no parent conversation history
+- **Progressive Writing**: Skeleton + Fill pattern to avoid context limits on long reports
 - **LightRAG Integration**: Graph-based retrieval with 4 query modes (hybrid/local/global/naive)
 - **PhD-Level Quality Standards**: Embedded in system prompts (citation coherence, quantitative rigor)
 - **Agent Skills**: Progressive disclosure metacognitive frameworks (gap analysis, insight generation)

@@ -12,6 +12,8 @@ from typing import Annotated
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langgraph.runtime import Runtime
+from langchain_openai import ChatOpenAI
+import os
 
 # Import RAG utilities
 import sys
@@ -36,12 +38,14 @@ def _build_lightrag_graph():
     Returns:
         Compiled LangGraph agent ready for execution
     """
-    # Use default context for initialization
-    # Runtime context will be injected via Runtime[Context]
-    ctx = Context()
-
-    # Load default model (will be overridden at runtime)
-    model = load_chat_model(ctx.subagent_model)
+    # Use same DeepSeek LLM as main graph
+    model = ChatOpenAI(
+        api_key=os.environ.get("DEEPSEEK_API_KEY", "n/a"),
+        base_url="https://api.deepseek.com",
+        model="deepseek-chat",
+        max_retries=5,
+        request_timeout=120,
+    )
 
     # System prompt for the agent
     system_prompt = """You are an expert biomedical research assistant with access to a knowledge base of research papers on sleep disorders, psychiatric conditions, and Mendelian randomization studies.
@@ -100,7 +104,7 @@ This tool queries a knowledge graph built from research papers. It returns raw c
 Remember: You are a research assistant. Be thorough, accurate, and evidence-based."""
     
     print("🔬 Building LightRAG Research Agent...")
-    print(f"   Model: {ctx.model} (configurable via Studio)")
+   #  print(f"   Model: {ctx.model} (configurable via Studio)")
     print("   Tool: search_research_papers")
 
     # Create the agent with RAG tool

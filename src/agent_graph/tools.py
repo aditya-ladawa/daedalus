@@ -60,7 +60,7 @@ def web_search(query: str) -> str:
     # Tavily search with basic mode to reduce API costs
     response = tavily_client.search(
         query,
-        max_results=5,  # Reduced for cost savings
+        max_results=15,  # Reduced for cost savings
         search_depth="basic",  # Use basic mode to reduce API consumption
         include_answer=False,  # We want raw results, not LLM-generated answers
         include_raw_content=False,  # Don't need full HTML (too verbose)
@@ -130,6 +130,9 @@ def read_todos(
         result += f"{i}. {emoji} {todo['content']} ({todo['status']})\n"
 
     return result.strip()
+
+
+
 
 
 @tool(parse_docstring=True)
@@ -596,7 +599,7 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
 
         # Create sub-agent with parallel tool calls disabled
         agents[_agent["name"]] = create_react_agent(
-            agent_model.bind(parallel_tool_calls=False),
+            agent_model.bind(parallel_tool_calls=True),
             prompt=_agent["prompt"],
             tools=_tools,
             state_schema=state_schema,
@@ -712,25 +715,25 @@ def _create_task_tool(tools, subagents: list[SubAgent], model, state_schema, res
 SUB_AGENTS: List[SubAgent] = [
     SubAgent(
         name="internet_researcher",
-        description="Web research specialist - conducts comprehensive, multi-angle research and returns FULL findings without summarization",
+        description="Internet research specialist — performs focused, depth-oriented web research and returns complete, structured findings with numbered references. Prioritizes depth over breadth (5-10 high-quality sources over 50 shallow ones).",
         prompt=prompts.INTERNET_RESEARCHER_PROMPT,
         tools=["web_search", "think_strategically"],
     ),
     SubAgent(
         name="filesystem_reader",
-        description="File system reader - reads existing files, lists directories, searches content. Use for gathering context from existing documents.",
+        description="Filesystem research intelligence agent — reads files and returns synthesized research insights (findings, results, implications), NOT raw content dumps. Reports which files were referenced. Use only when RAG DB is insufficient.",
         prompt=prompts.FILESYSTEM_READER_PROMPT,
         tools=["list_directory", "read_file", "file_search", "file_content_search"],
     ),
     SubAgent(
         name="script_executor",
-        description="Script execution specialist - runs Python scripts from src/scripts_for_agent/, converts markdown to PDF, executes bash commands, and creates data visualizations",
+        description="Script/visualization executor — executes Python scripts and bash commands, primarily for generating publication-quality data visualizations (matplotlib/seaborn) and converting reports to PDF.",
         prompt=prompts.SCRIPT_EXECUTOR_PROMPT,
-        tools=["execute_bash", "list_directory", "read_file", "write_file", "file_search"],
+        tools=["execute_bash", "list_directory", "read_file", "write_file", "file_search", "think_strategically"],
     ),
     SubAgent(
         name="biomedical_researcher",
-        description="Research knowledge base specialist - queries knowledge graph built from research papers using multiple search modes (global, local, hybrid, naive)",
+        description="Knowledge base specialist — queries the vector DB and knowledge graph built from embedded research papers. Use as PRIMARY source before falling back to internet research. Supports hybrid, local, global, and naive search modes.",
         prompt=prompts.BIOMEDICAL_RESEARCHER_PROMPT,
         tools=["search_research_papers"],
     ),

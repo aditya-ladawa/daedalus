@@ -12,7 +12,7 @@ class Context:
     """The context for the agent."""
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="deepseek/deepseek-chat",
+        default="openai/moonshotai/kimi-k2.5",  # Changed to match actual LLM in graph.py
         # default="google_genai/gemini-3-pro-preview",
         metadata={
             "description": "The name of the language model to use for the agent's main interactions. "
@@ -21,7 +21,7 @@ class Context:
     )
 
     subagent_model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        default="google_genai/gemini-2.5-flash",
+        default="openai/moonshotai/kimi-k2.5",  # Changed to match main agent (OpenRouter)
         metadata={
             "description": "The name of the language model to use for sub-agents (internet_researcher, biomedical_researcher, filesystem_reader, script_executor). "
             "Should be in the form: provider/model-name."
